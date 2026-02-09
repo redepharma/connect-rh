@@ -1,11 +1,56 @@
-import '@/styles/globals.css';
-import type { AppProps } from 'next/app';
-import { AuthProvider } from '@/context/auth-context';
+import { ThemeProvider, useTheme } from "@/components/ThemeContext";
+import "@/styles/globals.css";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { ConfigProvider, ThemeConfig, theme as antdTheme } from "antd";
+import ptBR from "antd/locale/pt_BR";
+import type { AppProps } from "next/app";
 
-export default function App({ Component, pageProps }: AppProps) {
+const themeLight: ThemeConfig = {
+  token: {
+    colorInfo: "#1677ffba",
+    colorPrimary: "#fa541c",
+    colorTextBase: "#404040",
+    colorBgBase: "#ffffff",
+    wireframe: false,
+  },
+  algorithm: antdTheme.defaultAlgorithm,
+};
+
+const themeDark: ThemeConfig = {
+  token: {
+    colorInfo: "#1677ffba",
+    colorPrimary: "#fa541c",
+    colorTextBase: "#fafafa",
+    colorBgBase: "#151517",
+    wireframe: false,
+  },
+  algorithm: antdTheme.darkAlgorithm,
+};
+
+function ThemeAppWrapper({ Component, pageProps }: AppProps) {
+  const { isDarkMode } = useTheme();
+
   return (
-    <AuthProvider>
-      <Component {...pageProps} />
-    </AuthProvider>
+    <ConfigProvider locale={ptBR} theme={isDarkMode ? themeDark : themeLight}>
+      <div
+        style={{
+          backgroundColor: isDarkMode ? "#151517" : "#ffffff",
+          minHeight: "100vh",
+          transition: "background-color 0.3s",
+        }}
+      >
+        <Component {...pageProps} />
+      </div>
+    </ConfigProvider>
+  );
+}
+
+export default function App(props: AppProps) {
+  return (
+    <AntdRegistry>
+      <ThemeProvider>
+        <ThemeAppWrapper {...props} />
+      </ThemeProvider>
+    </AntdRegistry>
   );
 }
