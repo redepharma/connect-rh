@@ -4,6 +4,7 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider, ThemeConfig, theme as antdTheme } from "antd";
 import ptBR from "antd/locale/pt_BR";
 import type { AppProps } from "next/app";
+import { AuthProvider } from "@/context/auth-context";
 
 const themeLight: ThemeConfig = {
   token: {
@@ -49,7 +50,9 @@ export default function App(props: AppProps) {
   return (
     <AntdRegistry>
       <ThemeProvider>
-        <ThemeAppWrapper {...props} />
+        <AuthProvider>
+          <ThemeAppWrapper {...props} />
+        </AuthProvider>
       </ThemeProvider>
     </AntdRegistry>
   );
