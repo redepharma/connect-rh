@@ -132,33 +132,13 @@ export default function TiposPage() {
         {error ? (
           <Alert type="error" message="Falha ao carregar tipos" description={error} showIcon />
         ) : (
-          <TipoTable data={data} loading={loading} />
+          <TipoTable
+            data={data}
+            loading={loading}
+            onEdit={openEdit}
+            onDelete={(tipo) => void handleDelete(tipo)}
+          />
         )}
-        {!error ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {data.map((tipo) => (
-              <div
-                key={tipo.id}
-                className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-              >
-                <span>{tipo.nome}</span>
-                <Button size="small" onClick={() => openEdit(tipo)}>
-                  Editar
-                </Button>
-                <Popconfirm
-                  title="Remover tipo?"
-                  okText="Sim"
-                  cancelText="Nao"
-                  onConfirm={() => void handleDelete(tipo)}
-                >
-                  <Button size="small" danger>
-                    Remover
-                  </Button>
-                </Popconfirm>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </SectionCard>
       <Modal
         open={open}

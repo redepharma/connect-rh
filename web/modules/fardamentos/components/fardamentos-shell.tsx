@@ -11,6 +11,7 @@ const navItems = [
   { href: "/fardamentos/tipos", label: "Tipos" },
   { href: "/fardamentos/variacoes", label: "Variacoes" },
   { href: "/fardamentos/estoque", label: "Estoque" },
+  { href: "/fardamentos/movimentacoes", label: "Movimentacoes" },
 ];
 
 type Props = {
@@ -20,7 +21,12 @@ type Props = {
   children: ReactNode;
 };
 
-export function FardamentosShell({ title, description, actions, children }: Props) {
+export function FardamentosShell({
+  title,
+  description,
+  actions,
+  children,
+}: Props) {
   const router = useRouter();
 
   return (
@@ -32,7 +38,10 @@ export function FardamentosShell({ title, description, actions, children }: Prop
               <Typography.Text className="text-[11px] uppercase tracking-wide text-neutral-500">
                 Connect RH - Fardamentos & EPIs
               </Typography.Text>
-              <Typography.Title level={2} className="!mb-1 !mt-0 text-neutral-900">
+              <Typography.Title
+                level={2}
+                className="!mb-1 !mt-0 text-neutral-900"
+              >
                 {title}
               </Typography.Title>
               {description ? (

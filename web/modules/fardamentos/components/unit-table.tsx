@@ -1,15 +1,22 @@
 "use client";
 
-import { Table, Tag } from "antd";
+import { Button, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Unidade } from "../types/fardamentos.types";
 
 type UnitTableProps = {
   data: Unidade[];
   loading?: boolean;
+  onEdit?: (unidade: Unidade) => void;
+  onDelete?: (unidade: Unidade) => void;
 };
 
-export function UnitTable({ data, loading }: UnitTableProps) {
+export function UnitTable({
+  data,
+  loading,
+  onEdit,
+  onDelete,
+}: UnitTableProps) {
   const columns: ColumnsType<Unidade> = [
     {
       title: "Unidade",
@@ -33,6 +40,31 @@ export function UnitTable({ data, loading }: UnitTableProps) {
       key: "ativo",
       render: (value: boolean) => (
         <Tag color={value ? "green" : "red"}>{value ? "Ativa" : "Inativa"}</Tag>
+      ),
+    },
+    {
+      title: "Acoes",
+      key: "acoes",
+      render: (_: unknown, record: Unidade) => (
+        <Space>
+          {onEdit ? (
+            <Button size="small" onClick={() => onEdit(record)}>
+              Editar
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Popconfirm
+              title="Remover unidade?"
+              okText="Sim"
+              cancelText="Nao"
+              onConfirm={() => onDelete(record)}
+            >
+              <Button size="small" danger>
+                Remover
+              </Button>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

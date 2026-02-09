@@ -1,3 +1,5 @@
+import { Genero } from "./genero.enums";
+
 export type Unidade = {
   id: string;
   nome: string;
@@ -17,7 +19,7 @@ export type Variacao = {
   tipoId: string;
   tipoNome: string;
   tamanho: string;
-  genero: string;
+  genero: Genero;
 };
 
 export type EstoqueItem = {
@@ -39,7 +41,7 @@ export type TipoResponse = {
 export type VariacaoResponse = {
   id: string;
   tamanho: string;
-  genero: string;
+  genero: Genero;
   tipo: { id: string; nome: string };
 };
 
@@ -51,7 +53,7 @@ export type EstoqueResponse = {
   variacao: {
     id: string;
     tamanho: string;
-    genero: string;
+    genero: Genero;
     tipo: { nome: string };
   };
 };

@@ -1,15 +1,22 @@
 "use client";
 
-import { Table } from "antd";
+import { Button, Popconfirm, Space, Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Variacao } from "../types/fardamentos.types";
 
 type VariacaoTableProps = {
   data: Variacao[];
   loading?: boolean;
+  onEdit?: (variacao: Variacao) => void;
+  onDelete?: (variacao: Variacao) => void;
 };
 
-export function VariacaoTable({ data, loading }: VariacaoTableProps) {
+export function VariacaoTable({
+  data,
+  loading,
+  onEdit,
+  onDelete,
+}: VariacaoTableProps) {
   const columns: ColumnsType<Variacao> = [
     {
       title: "Tipo",
@@ -35,6 +42,31 @@ export function VariacaoTable({ data, loading }: VariacaoTableProps) {
       key: "id",
       render: (value: string) => (
         <span className="text-xs text-neutral-500">{value}</span>
+      ),
+    },
+    {
+      title: "Acoes",
+      key: "acoes",
+      render: (_: unknown, record: Variacao) => (
+        <Space>
+          {onEdit ? (
+            <Button size="small" onClick={() => onEdit(record)}>
+              Editar
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Popconfirm
+              title="Remover variacao?"
+              okText="Sim"
+              cancelText="Nao"
+              onConfirm={() => onDelete(record)}
+            >
+              <Button size="small" danger>
+                Remover
+              </Button>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

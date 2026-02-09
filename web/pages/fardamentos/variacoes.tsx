@@ -4,6 +4,7 @@ import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-s
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { VariacaoTable } from "@/modules/fardamentos/components/variacao-table";
 import type { Variacao } from "@/modules/fardamentos/types/fardamentos.types";
+import { Genero } from "@/modules/fardamentos/types/genero.enums";
 import {
   createVariacao,
   deleteVariacao,
@@ -145,33 +146,13 @@ export default function VariacoesPage() {
             showIcon
           />
         ) : (
-          <VariacaoTable data={data} loading={loading} />
+          <VariacaoTable
+            data={data}
+            loading={loading}
+            onEdit={openEdit}
+            onDelete={(variacao) => void handleDelete(variacao)}
+          />
         )}
-        {!error ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {data.map((variacao) => (
-              <div
-                key={variacao.id}
-                className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-              >
-                <span>{variacao.tipoNome}</span>
-                <Button size="small" onClick={() => openEdit(variacao)}>
-                  Editar
-                </Button>
-                <Popconfirm
-                  title="Remover variacao?"
-                  okText="Sim"
-                  cancelText="Nao"
-                  onConfirm={() => void handleDelete(variacao)}
-                >
-                  <Button size="small" danger>
-                    Remover
-                  </Button>
-                </Popconfirm>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </SectionCard>
       <Modal
         open={open}
@@ -191,7 +172,14 @@ export default function VariacoesPage() {
             <Input placeholder="Ex: P, M, G, 40" />
           </Form.Item>
           <Form.Item name="genero" label="Genero" rules={[{ required: true }]}>
-            <Input placeholder="Ex: Masculino, Feminino, Unissex" />
+            <Select
+              placeholder="Selecione o genero"
+              options={[
+                { label: "Masculino", value: Genero.MASCULINO },
+                { label: "Feminino", value: Genero.FEMININO },
+                { label: "Unissex", value: Genero.UNISSEX },
+              ]}
+            />
           </Form.Item>
         </Form>
       </Modal>

@@ -118,33 +118,10 @@ export default function UnidadesPage() {
           <UnitTable
             data={data}
             loading={loading}
+            onEdit={openEdit}
+            onDelete={(unit) => void handleDelete(unit)}
           />
         )}
-        {!error ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {data.map((unit) => (
-              <div
-                key={unit.id}
-                className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-              >
-                <span>{unit.nome}</span>
-                <Button size="small" onClick={() => openEdit(unit)}>
-                  Editar
-                </Button>
-                <Popconfirm
-                  title="Remover unidade?"
-                  okText="Sim"
-                  cancelText="Nao"
-                  onConfirm={() => void handleDelete(unit)}
-                >
-                  <Button size="small" danger>
-                    Remover
-                  </Button>
-                </Popconfirm>
-              </div>
-            ))}
-          </div>
-        ) : null}
       </SectionCard>
       <Modal
         open={open}

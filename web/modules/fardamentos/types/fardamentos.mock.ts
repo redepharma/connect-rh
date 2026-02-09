@@ -1,4 +1,5 @@
 import type { Unidade, TipoFardamento, Variacao, EstoqueItem } from "./fardamentos.types";
+import { Genero } from "./genero.enums";
 
 export const unidadesMock: Unidade[] = [
   { id: "uni_loja", nome: "Lojas", descricao: "Atendimento e caixa", ativo: true },
@@ -15,12 +16,12 @@ export const tiposMock: TipoFardamento[] = [
 ];
 
 export const variacoesMock: Variacao[] = [
-  { id: "var_polo_p_m", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "P", genero: "Masculino" },
-  { id: "var_polo_m_f", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "M", genero: "Feminino" },
-  { id: "var_jaleco_m", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "M", genero: "Unissex" },
-  { id: "var_jaleco_g", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "G", genero: "Unissex" },
-  { id: "var_calca_40", tipoId: "tipo_calca", tipoNome: "Calca Social", tamanho: "40", genero: "Masculino" },
-  { id: "var_avental_u", tipoId: "tipo_avental", tipoNome: "Avental", tamanho: "Unico", genero: "Unissex" },
+  { id: "var_polo_p_m", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "P", genero: Genero.MASCULINO },
+  { id: "var_polo_m_f", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "M", genero: Genero.FEMININO },
+  { id: "var_jaleco_m", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "M", genero: Genero.UNISSEX },
+  { id: "var_jaleco_g", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "G", genero: Genero.UNISSEX },
+  { id: "var_calca_40", tipoId: "tipo_calca", tipoNome: "Calca Social", tamanho: "40", genero: Genero.MASCULINO },
+  { id: "var_avental_u", tipoId: "tipo_avental", tipoNome: "Avental", tamanho: "Unico", genero: Genero.UNISSEX },
 ];
 
 export const estoqueMock: EstoqueItem[] = [

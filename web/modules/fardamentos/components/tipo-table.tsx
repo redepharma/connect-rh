@@ -1,15 +1,17 @@
 "use client";
 
-import { Table, Tag } from "antd";
+import { Button, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { TipoFardamento } from "../types/fardamentos.types";
 
 type TipoTableProps = {
   data: TipoFardamento[];
   loading?: boolean;
+  onEdit?: (tipo: TipoFardamento) => void;
+  onDelete?: (tipo: TipoFardamento) => void;
 };
 
-export function TipoTable({ data, loading }: TipoTableProps) {
+export function TipoTable({ data, loading, onEdit, onDelete }: TipoTableProps) {
   const columns: ColumnsType<TipoFardamento> = [
     {
       title: "Tipo",
@@ -37,6 +39,31 @@ export function TipoTable({ data, loading }: TipoTableProps) {
       key: "variacoesCount",
       render: (value: number) => (
         <span className="font-medium text-neutral-900">{value}</span>
+      ),
+    },
+    {
+      title: "Acoes",
+      key: "acoes",
+      render: (_: unknown, record: TipoFardamento) => (
+        <Space>
+          {onEdit ? (
+            <Button size="small" onClick={() => onEdit(record)}>
+              Editar
+            </Button>
+          ) : null}
+          {onDelete ? (
+            <Popconfirm
+              title="Remover tipo?"
+              okText="Sim"
+              cancelText="Nao"
+              onConfirm={() => onDelete(record)}
+            >
+              <Button size="small" danger>
+                Remover
+              </Button>
+            </Popconfirm>
+          ) : null}
+        </Space>
       ),
     },
   ];

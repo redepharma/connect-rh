@@ -7,6 +7,11 @@ import type {
   Variacao,
   VariacaoResponse,
 } from "@/modules/fardamentos/types/fardamentos.types";
+import { Genero } from "@/modules/fardamentos/types/genero.enums";
+import {
+  MovimentacaoStatus,
+  MovimentacaoTipo,
+} from "@/modules/fardamentos/types/movimentacoes.enums";
 import { apiClient } from "@/shared/api-client.service";
 
 export const fetchUnidades = (q?: string) =>
@@ -74,7 +79,7 @@ export const fetchVariacoes = (q?: string, tipoId?: string) =>
 export const createVariacao = (data: {
   tipoId: string;
   tamanho: string;
-  genero: string;
+  genero: Genero;
 }) =>
   apiClient<VariacaoResponse>("/fardamentos/variacoes", {
     method: "POST",
@@ -83,7 +88,7 @@ export const createVariacao = (data: {
 
 export const updateVariacao = (
   id: string,
-  data: { tipoId?: string; tamanho?: string; genero?: string },
+  data: { tipoId?: string; tamanho?: string; genero?: Genero },
 ) =>
   apiClient<VariacaoResponse>(`/fardamentos/variacoes/${id}`, {
     method: "PUT",
@@ -141,4 +146,96 @@ export const mapEstoqueToUi = (estoque: EstoqueResponse[]): EstoqueItem[] =>
     unidade: item.unidade?.nome ?? "-",
     total: item.total ?? 0,
     reservado: item.reservado ?? 0,
+  }));
+
+export type MovimentacaoResponse = {
+  id: string;
+  tipo: MovimentacaoTipo;
+  status: MovimentacaoStatus;
+  unidade: { id: string; nome: string };
+  colaboradorId: string;
+  colaboradorNome: string;
+  createdAt: string;
+  itens: {
+    id: string;
+    quantidade: number;
+    variacao: {
+      id: string;
+      tamanho: string;
+      genero: string;
+      tipo: { nome: string };
+    };
+  }[];
+};
+
+export const fetchMovimentacoes = (filters?: {
+  q?: string;
+  unidadeId?: string;
+  tipo?: MovimentacaoTipo;
+  status?: MovimentacaoStatus;
+  startDate?: string;
+  endDate?: string;
+}) =>
+  apiClient<MovimentacaoResponse[]>("/fardamentos/movimentacoes", {
+    method: "GET",
+    query: {
+      q: filters?.q,
+      unidadeId: filters?.unidadeId,
+      tipo: filters?.tipo,
+      status: filters?.status,
+      startDate: filters?.startDate,
+      endDate: filters?.endDate,
+    },
+  });
+
+export const createEntrega = (payload: {
+  unidadeId: string;
+  colaboradorId: string;
+  colaboradorNome: string;
+  itens: { variacaoId: string; quantidade: number }[];
+}) =>
+  apiClient<MovimentacaoResponse>("/fardamentos/movimentacoes/entrega", {
+    method: "POST",
+    body: payload,
+  });
+
+export const createDevolucao = (payload: {
+  unidadeId: string;
+  colaboradorId: string;
+  colaboradorNome: string;
+  itens: { variacaoId: string; quantidade: number }[];
+}) =>
+  apiClient<MovimentacaoResponse>("/fardamentos/movimentacoes/devolucao", {
+    method: "POST",
+    body: payload,
+  });
+
+export const updateMovimentacaoStatus = (
+  id: string,
+  status: MovimentacaoStatus,
+) =>
+  apiClient<MovimentacaoResponse>(`/fardamentos/movimentacoes/${id}/status`, {
+    method: "PATCH",
+    body: { status },
+  });
+
+export const mapMovimentacoesToUi = (data: MovimentacaoResponse[]) =>
+  data.map((mov) => ({
+    id: mov.id,
+    tipo: mov.tipo,
+    status: mov.status,
+    unidadeId: mov.unidade?.id ?? "",
+    unidadeNome: mov.unidade?.nome ?? "-",
+    colaboradorId: mov.colaboradorId,
+    colaboradorNome: mov.colaboradorNome,
+    createdAt: mov.createdAt,
+    itens: (mov.itens ?? []).map((item) => ({
+      id: item.id,
+      variacaoId: item.variacao?.id ?? "",
+      tipoNome: item.variacao?.tipo?.nome ?? "-",
+      variacaoLabel: `${item.variacao?.tamanho ?? "-"} - ${
+        item.variacao?.genero ?? "-"
+      }`,
+      quantidade: item.quantidade,
+    })),
   }));
