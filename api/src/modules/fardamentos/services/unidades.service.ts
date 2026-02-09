@@ -22,8 +22,17 @@ export class UnidadesService {
     return this.unidadesRepository.save(unidade);
   }
 
-  async findAll(): Promise<UnidadeEntity[]> {
-    return this.unidadesRepository.find({ order: { nome: 'ASC' } });
+  async findAll(query?: { q?: string }): Promise<UnidadeEntity[]> {
+    const qb = this.unidadesRepository.createQueryBuilder('unidade');
+
+    if (query?.q) {
+      qb.andWhere('(unidade.nome LIKE :q OR unidade.descricao LIKE :q)', {
+        q: `%${query.q}%`,
+      });
+    }
+
+    qb.orderBy('unidade.nome', 'ASC');
+    return qb.getMany();
   }
 
   async findOne(id: string): Promise<UnidadeEntity> {

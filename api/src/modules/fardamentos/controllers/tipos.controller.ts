@@ -6,10 +6,12 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { TiposService } from '../services/tipos.service';
 import { CreateTipoDto } from '../dto/create-tipo.dto';
 import { UpdateTipoDto } from '../dto/update-tipo.dto';
+import { ListQueryDto } from '../dto/list-query.dto';
 
 @Controller('fardamentos/tipos')
 export class TiposController {
@@ -21,8 +23,8 @@ export class TiposController {
   }
 
   @Get()
-  findAll() {
-    return this.tiposService.findAll();
+  findAll(@Query() query: ListQueryDto) {
+    return this.tiposService.findAll(query);
   }
 
   @Get(':id')

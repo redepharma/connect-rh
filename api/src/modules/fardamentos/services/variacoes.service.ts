@@ -37,11 +37,27 @@ export class VariacoesService {
     return this.variacoesRepository.save(variacao);
   }
 
-  async findAll(): Promise<VariacaoEntity[]> {
-    return this.variacoesRepository.find({
-      relations: ['tipo'],
-      order: { createdAt: 'DESC' },
-    });
+  async findAll(query?: {
+    q?: string;
+    tipoId?: string;
+  }): Promise<VariacaoEntity[]> {
+    const qb = this.variacoesRepository
+      .createQueryBuilder('variacao')
+      .leftJoinAndSelect('variacao.tipo', 'tipo');
+
+    if (query?.q) {
+      qb.andWhere(
+        '(variacao.tamanho LIKE :q OR variacao.genero LIKE :q OR tipo.nome LIKE :q)',
+        { q: `%${query.q}%` },
+      );
+    }
+
+    if (query?.tipoId) {
+      qb.andWhere('tipo.id = :tipoId', { tipoId: query.tipoId });
+    }
+
+    qb.orderBy('variacao.created_at', 'DESC');
+    return qb.getMany();
   }
 
   async findOne(id: string): Promise<VariacaoEntity> {

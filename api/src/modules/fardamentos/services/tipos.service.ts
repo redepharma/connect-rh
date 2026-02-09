@@ -36,11 +36,24 @@ export class TiposService {
     return this.tiposRepository.save(tipo);
   }
 
-  async findAll(): Promise<TipoEntity[]> {
-    return this.tiposRepository.find({
-      relations: ['unidades'],
-      order: { nome: 'ASC' },
-    });
+  async findAll(query?: {
+    q?: string;
+    unidadeId?: string;
+  }): Promise<TipoEntity[]> {
+    const qb = this.tiposRepository
+      .createQueryBuilder('tipo')
+      .leftJoinAndSelect('tipo.unidades', 'unidade');
+
+    if (query?.q) {
+      qb.andWhere('tipo.nome LIKE :q', { q: `%${query.q}%` });
+    }
+
+    if (query?.unidadeId) {
+      qb.andWhere('unidade.id = :unidadeId', { unidadeId: query.unidadeId });
+    }
+
+    qb.orderBy('tipo.nome', 'ASC');
+    return qb.getMany();
   }
 
   async findOne(id: string): Promise<TipoEntity> {

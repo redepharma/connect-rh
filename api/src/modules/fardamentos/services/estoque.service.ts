@@ -32,6 +32,13 @@ export class EstoqueService {
       qb.andWhere('tipo.id = :tipoId', { tipoId: query.tipoId });
     }
 
+    if (query.q) {
+      qb.andWhere(
+        '(tipo.nome LIKE :q OR unidade.nome LIKE :q OR variacao.tamanho LIKE :q OR variacao.genero LIKE :q)',
+        { q: `%${query.q}%` },
+      );
+    }
+
     if (query.baixoEstoque === 'true') {
       qb.andWhere('(estoque.total - estoque.reservado) < :minimo', {
         minimo: 3,

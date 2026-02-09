@@ -6,10 +6,12 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { VariacoesService } from '../services/variacoes.service';
 import { CreateVariacaoDto } from '../dto/create-variacao.dto';
 import { UpdateVariacaoDto } from '../dto/update-variacao.dto';
+import { ListQueryDto } from '../dto/list-query.dto';
 
 @Controller('fardamentos/variacoes')
 export class VariacoesController {
@@ -21,8 +23,8 @@ export class VariacoesController {
   }
 
   @Get()
-  findAll() {
-    return this.variacoesService.findAll();
+  findAll(@Query() query: ListQueryDto) {
+    return this.variacoesService.findAll(query);
   }
 
   @Get(':id')

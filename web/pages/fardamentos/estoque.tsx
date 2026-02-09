@@ -1,16 +1,32 @@
-import { Alert, Button, Input } from "antd";
-import Link from "next/link";
+import { Alert, Button, Input, Select, Space, Switch } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { EstoqueTable } from "@/modules/fardamentos/components/estoque-table";
-import type { EstoqueItem } from "@/modules/fardamentos/fardamentos.types";
-import { apiFetch } from "@/lib/api-client";
+import type { EstoqueItem } from "@/modules/fardamentos/types/fardamentos.types";
+import {
+  fetchEstoque,
+  fetchTipos,
+  fetchUnidades,
+  mapEstoqueToUi,
+} from "@/modules/fardamentos/services/fardamentos.service";
+import type {
+  Unidade,
+  TipoFardamento,
+} from "@/modules/fardamentos/types/fardamentos.types";
+import { mapTiposToUi } from "@/modules/fardamentos/services/fardamentos.service";
+import { parseApiError } from "@/shared/error-handlers/api-errors";
 
 export default function EstoquePage() {
   const [data, setData] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [unidadeId, setUnidadeId] = useState<string | undefined>();
+  const [tipoId, setTipoId] = useState<string | undefined>();
+  const [baixoEstoque, setBaixoEstoque] = useState(false);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [tipos, setTipos] = useState<TipoFardamento[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -19,34 +35,18 @@ export default function EstoquePage() {
       setLoading(true);
       setError(null);
       try {
-        const result = await apiFetch<
-          {
-            id: string;
-            total: number;
-            reservado: number;
-            unidade: { id: string; nome: string };
-            variacao: {
-              id: string;
-              tamanho: string;
-              genero: string;
-              tipo: { nome: string };
-            };
-          }[]
-        >("/fardamentos/estoque");
-        const mapped = result.map((item) => ({
-          id: item.id,
-          variacaoId: item.variacao?.id ?? "",
-          tipoNome: item.variacao?.tipo?.nome ?? "-",
-          variacaoLabel: `${item.variacao?.tamanho ?? "-"} - ${
-            item.variacao?.genero ?? "-"
-          }`,
-          unidade: item.unidade?.nome ?? "-",
-          total: item.total ?? 0,
-          reservado: item.reservado ?? 0,
-        }));
-        if (active) setData(mapped);
+        const [estoqueResult, unidadesResult, tiposResult] = await Promise.all([
+          fetchEstoque({ q: query, unidadeId, tipoId, baixoEstoque }),
+          fetchUnidades(),
+          fetchTipos(),
+        ]);
+        if (active) {
+          setData(mapEstoqueToUi(estoqueResult));
+          setUnidades(unidadesResult);
+          setTipos(mapTiposToUi(tiposResult));
+        }
       } catch (err) {
-        if (active) setError((err as Error).message);
+        if (active) setError(parseApiError(err).message);
       } finally {
         if (active) setLoading(false);
       }
@@ -57,25 +57,63 @@ export default function EstoquePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [query, unidadeId, tipoId, baixoEstoque]);
 
   return (
     <FardamentosShell
       title="Estoque"
       description="Controle disponivel, reservas e alertas de baixo estoque."
-      actions={
-        <Link href="#" className="inline-flex">
-          <Button>Atualizar estoque</Button>
-        </Link>
-      }
+      actions={<Button>Atualizar estoque</Button>}
     >
       <SectionCard
         title="Resumo de estoque"
         description="Disponivel = total - reservado. Alerta itens abaixo do minimo."
-        actions={<Input placeholder="Buscar item" />}
+        actions={
+          <Space>
+            <Input
+              placeholder="Buscar item"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              allowClear
+            />
+            <Select
+              placeholder="Filtrar unidade"
+              value={unidadeId}
+              allowClear
+              onChange={(value) => setUnidadeId(value)}
+              options={unidades.map((unit) => ({
+                label: unit.nome,
+                value: unit.id,
+              }))}
+              style={{ minWidth: 180 }}
+            />
+            <Select
+              placeholder="Filtrar tipo"
+              value={tipoId}
+              allowClear
+              onChange={(value) => setTipoId(value)}
+              options={tipos.map((tipo) => ({
+                label: tipo.nome,
+                value: tipo.id,
+              }))}
+              style={{ minWidth: 180 }}
+            />
+            <Switch
+              checked={baixoEstoque}
+              onChange={(checked) => setBaixoEstoque(checked)}
+              checkedChildren="Baixo estoque"
+              unCheckedChildren="Todos"
+            />
+          </Space>
+        }
       >
         {error ? (
-          <Alert type="error" message="Falha ao carregar estoque" description={error} showIcon />
+          <Alert
+            type="error"
+            message="Falha ao carregar estoque"
+            description={error}
+            showIcon
+          />
         ) : (
           <EstoqueTable data={data} loading={loading} />
         )}

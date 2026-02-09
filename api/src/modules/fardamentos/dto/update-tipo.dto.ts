@@ -14,6 +14,6 @@ export class UpdateTipoDto {
 
   @IsOptional()
   @IsArray()
-  @IsUUID('4', { each: true })
+  @IsUUID('all', { each: true })
   unidadesIds?: string[];
 }

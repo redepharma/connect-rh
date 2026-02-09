@@ -1,7 +1,7 @@
 import { IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateVariacaoDto {
-  @IsUUID('4')
+  @IsUUID('all')
   tipoId: string;
 
   @IsString()

@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { Alert, Button, Card, Input, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
-import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/fardamentos.constants";
-import type { EstoqueItem, TipoFardamento, Unidade, Variacao } from "@/modules/fardamentos/fardamentos.types";
-import { apiFetch } from "@/lib/api-client";
+import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/types/fardamentos.constants";
+import type { EstoqueItem, TipoFardamento, Unidade, Variacao } from "@/modules/fardamentos/types/fardamentos.types";
+import { fetchEstoque, fetchTipos, fetchUnidades, fetchVariacoes, mapEstoqueToUi, mapTiposToUi, mapVariacoesToUi } from "@/modules/fardamentos/services/fardamentos.service";
+import { parseApiError } from "@/shared/error-handlers/api-errors";
 
 export default function FardamentosOverview() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
@@ -25,69 +25,20 @@ export default function FardamentosOverview() {
       try {
         const [unidadesResult, tiposResult, variacoesResult, estoqueResult] =
           await Promise.all([
-            apiFetch<Unidade[]>("/fardamentos/unidades"),
-            apiFetch<
-              { id: string; nome: string; unidades: { id: string; nome: string }[] }[]
-            >("/fardamentos/tipos"),
-            apiFetch<
-              {
-                id: string;
-                tamanho: string;
-                genero: string;
-                tipo: { id: string; nome: string };
-              }[]
-            >("/fardamentos/variacoes"),
-            apiFetch<
-              {
-                id: string;
-                total: number;
-                reservado: number;
-                unidade: { id: string; nome: string };
-                variacao: {
-                  id: string;
-                  tamanho: string;
-                  genero: string;
-                  tipo: { nome: string };
-                };
-              }[]
-            >("/fardamentos/estoque"),
+            fetchUnidades(),
+            fetchTipos(),
+            fetchVariacoes(),
+            fetchEstoque(),
           ]);
 
         if (!active) return;
 
         setUnidades(unidadesResult);
-        setTipos(
-          tiposResult.map((tipo) => ({
-            id: tipo.id,
-            nome: tipo.nome,
-            unidades: (tipo.unidades ?? []).map((u) => u.nome),
-            variacoesCount: 0,
-          })),
-        );
-        setVariacoes(
-          variacoesResult.map((item) => ({
-            id: item.id,
-            tipoId: item.tipo?.id ?? "",
-            tipoNome: item.tipo?.nome ?? "-",
-            tamanho: item.tamanho,
-            genero: item.genero,
-          })),
-        );
-        setEstoque(
-          estoqueResult.map((item) => ({
-            id: item.id,
-            variacaoId: item.variacao?.id ?? "",
-            tipoNome: item.variacao?.tipo?.nome ?? "-",
-            variacaoLabel: `${item.variacao?.tamanho ?? "-"} - ${
-              item.variacao?.genero ?? "-"
-            }`,
-            unidade: item.unidade?.nome ?? "-",
-            total: item.total ?? 0,
-            reservado: item.reservado ?? 0,
-          })),
-        );
+        setTipos(mapTiposToUi(tiposResult));
+        setVariacoes(mapVariacoesToUi(variacoesResult));
+        setEstoque(mapEstoqueToUi(estoqueResult));
       } catch (err) {
-        if (active) setError((err as Error).message);
+        if (active) setError(parseApiError(err).message);
       } finally {
         if (active) setLoading(false);
       }
@@ -156,11 +107,7 @@ export default function FardamentosOverview() {
         <SectionCard
           title="Alertas de estoque"
           description="Itens abaixo do limite minimo configurado."
-          actions={
-            <Link href="/fardamentos/estoque" className="inline-flex">
-              <Button type="primary">Ver estoque</Button>
-            </Link>
-          }
+          actions={<Button type="primary">Ver estoque</Button>}
         >
           <div className="space-y-3">
             {lowStockItems.length === 0 ? (
@@ -201,18 +148,17 @@ export default function FardamentosOverview() {
         >
           <div className="flex flex-col gap-2">
             {[
-              { href: "/fardamentos/unidades", label: "Cadastro de unidades" },
-              { href: "/fardamentos/tipos", label: "Cadastro de tipos" },
-              { href: "/fardamentos/variacoes", label: "Variacoes e tamanhos" },
-              { href: "/fardamentos/estoque", label: "Controle de estoque" },
+              { label: "Cadastro de unidades" },
+              { label: "Cadastro de tipos" },
+              { label: "Variacoes e tamanhos" },
+              { label: "Controle de estoque" },
             ].map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 hover:border-neutral-300"
+              <div
+                key={item.label}
+                className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700"
               >
                 {item.label}
-              </Link>
+              </div>
             ))}
           </div>
         </SectionCard>

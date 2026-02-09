@@ -1,17 +1,21 @@
-import { IsBooleanString, IsOptional, IsUUID } from 'class-validator';
+import { IsBooleanString, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class EstoqueQueryDto {
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   unidadeId?: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   tipoId?: string;
 
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   variacaoId?: string;
+
+  @IsOptional()
+  @IsString()
+  q?: string;
 
   @IsOptional()
   @IsBooleanString()

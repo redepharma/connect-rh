@@ -2,7 +2,7 @@
 
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { Variacao } from "../fardamentos.types";
+import type { Variacao } from "../types/fardamentos.types";
 
 type VariacaoTableProps = {
   data: Variacao[];

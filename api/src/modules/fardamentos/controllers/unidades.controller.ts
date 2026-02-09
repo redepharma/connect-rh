@@ -6,10 +6,12 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { UnidadesService } from '../services/unidades.service';
 import { CreateUnidadeDto } from '../dto/create-unidade.dto';
 import { UpdateUnidadeDto } from '../dto/update-unidade.dto';
+import { ListQueryDto } from '../dto/list-query.dto';
 
 @Controller('fardamentos/unidades')
 export class UnidadesController {
@@ -21,8 +23,8 @@ export class UnidadesController {
   }
 
   @Get()
-  findAll() {
-    return this.unidadesService.findAll();
+  findAll(@Query() query: ListQueryDto) {
+    return this.unidadesService.findAll(query);
   }
 
   @Get(':id')

@@ -2,7 +2,7 @@
 
 import { Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { TipoFardamento } from "../fardamentos.types";
+import type { TipoFardamento } from "../types/fardamentos.types";
 
 type TipoTableProps = {
   data: TipoFardamento[];

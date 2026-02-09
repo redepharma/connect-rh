@@ -2,7 +2,7 @@ import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class UpdateVariacaoDto {
   @IsOptional()
-  @IsUUID('4')
+  @IsUUID('all')
   tipoId?: string;
 
   @IsOptional()

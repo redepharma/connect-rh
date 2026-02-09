@@ -2,7 +2,7 @@
 
 import { Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import type { Unidade } from "../fardamentos.types";
+import type { Unidade } from "../types/fardamentos.types";
 
 type UnitTableProps = {
   data: Unidade[];

@@ -2,8 +2,8 @@
 
 import { Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { LOW_STOCK_THRESHOLD } from "../fardamentos.constants";
-import type { EstoqueItem } from "../fardamentos.types";
+import { LOW_STOCK_THRESHOLD } from "../types/fardamentos.constants";
+import type { EstoqueItem } from "../types/fardamentos.types";
 
 type EstoqueTableProps = {
   data: EstoqueItem[];
