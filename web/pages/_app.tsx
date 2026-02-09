@@ -1,5 +1,6 @@
 import { ThemeProvider, useTheme } from "@/components/ThemeContext";
 import "@/styles/globals.css";
+import "antd/dist/reset.css";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ConfigProvider, ThemeConfig, theme as antdTheme } from "antd";
 import ptBR from "antd/locale/pt_BR";

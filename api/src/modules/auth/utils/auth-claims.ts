@@ -12,8 +12,7 @@ const normalizeRole = (value?: string | null): PapelConnectRH | null => {
   const normalized = value.trim().toUpperCase();
 
   if (normalized === 'ADMIN') return PapelConnectRH.ADMIN;
-  if (normalized === 'TI' || normalized === 'TI_ADMIN')
-    return PapelConnectRH.TI;
+  if (normalized === 'TI') return PapelConnectRH.TI;
   if (normalized === 'PADRAO') return PapelConnectRH.PADRAO;
 
   const lower = normalized.toLowerCase() as PapelConnectRH;
