@@ -40,6 +40,8 @@ type EntregaWizardProps = {
   setEntregaTamanho: (value: string | null) => void;
   termos: TermoInfo[];
   termosLoading: boolean;
+  unidadesLoading?: boolean;
+  onUnidadesScroll?: () => void;
   onGerarTermo: () => void;
   onAbrirTermo: (id: string) => void;
   onBaixarTermo: (id: string) => void;
@@ -69,6 +71,8 @@ export function MovimentacaoEntregaWizard({
   setEntregaTamanho,
   termos,
   termosLoading,
+  unidadesLoading,
+  onUnidadesScroll,
   onGerarTermo,
   onAbrirTermo,
   onBaixarTermo,
@@ -182,6 +186,17 @@ export function MovimentacaoEntregaWizard({
                       allowClear
                       value={entregaUnidadeId ?? undefined}
                       onChange={(value) => setEntregaUnidadeId(value ?? null)}
+                      onPopupScroll={(event) => {
+                        if (!onUnidadesScroll) return;
+                        const target = event.target as HTMLDivElement;
+                        if (
+                          target.scrollTop + target.offsetHeight >=
+                          target.scrollHeight - 16
+                        ) {
+                          onUnidadesScroll();
+                        }
+                      }}
+                      loading={unidadesLoading}
                       options={unidades.map((u) => ({
                         label: u.nome,
                         value: u.id,

@@ -40,7 +40,14 @@ export class VariacoesService {
   async findAll(query?: {
     q?: string;
     tipoId?: string;
-  }): Promise<VariacaoEntity[]> {
+    offset?: number;
+    limit?: number;
+  }): Promise<{
+    data: VariacaoEntity[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const qb = this.variacoesRepository
       .createQueryBuilder('variacao')
       .leftJoinAndSelect('variacao.tipo', 'tipo');
@@ -56,8 +63,11 @@ export class VariacoesService {
       qb.andWhere('tipo.id = :tipoId', { tipoId: query.tipoId });
     }
 
-    qb.orderBy('variacao.created_at', 'DESC');
-    return qb.getMany();
+    qb.orderBy('variacao.createdAt', 'DESC');
+    const offset = Math.max(0, query?.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { data, total, offset, limit };
   }
 
   async findOne(id: string): Promise<VariacaoEntity> {

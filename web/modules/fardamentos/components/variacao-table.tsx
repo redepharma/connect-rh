@@ -7,6 +7,12 @@ import type { Variacao } from "../types/fardamentos.types";
 type VariacaoTableProps = {
   data: Variacao[];
   loading?: boolean;
+  pagination?: {
+    current: number;
+    pageSize: number;
+    total: number;
+    onChange: (page: number, pageSize: number) => void;
+  };
   onEdit?: (variacao: Variacao) => void;
   onDelete?: (variacao: Variacao) => void;
 };
@@ -14,6 +20,7 @@ type VariacaoTableProps = {
 export function VariacaoTable({
   data,
   loading,
+  pagination,
   onEdit,
   onDelete,
 }: VariacaoTableProps) {
@@ -77,7 +84,18 @@ export function VariacaoTable({
       columns={columns}
       dataSource={data}
       loading={loading}
-      pagination={false}
+      pagination={
+        pagination
+          ? {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              onChange: pagination.onChange,
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }
+          : false
+      }
       className="border border-neutral-200/70"
     />
   );

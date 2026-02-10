@@ -53,7 +53,14 @@ export class MovimentacoesService {
     status?: MovimentacaoStatus;
     startDate?: string;
     endDate?: string;
-  }): Promise<MovimentacaoEntity[]> {
+    offset?: number;
+    limit?: number;
+  }): Promise<{
+    data: MovimentacaoEntity[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const qb = this.movRepository
       .createQueryBuilder('mov')
       .leftJoinAndSelect('mov.unidade', 'unidade')
@@ -90,8 +97,11 @@ export class MovimentacoesService {
       qb.andWhere('mov.created_at <= :endDate', { endDate: query.endDate });
     }
 
-    qb.orderBy('mov.created_at', 'DESC');
-    return qb.getMany();
+    qb.orderBy('mov.createdAt', 'DESC');
+    const offset = Math.max(0, query?.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { data, total, offset, limit };
   }
 
   async findOne(id: string): Promise<MovimentacaoEntity> {

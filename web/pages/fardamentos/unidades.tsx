@@ -12,11 +12,16 @@ import {
   updateUnidade,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function UnidadesPage() {
   const [data, setData] = useState<Unidade[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [total, setTotal] = useState(0);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Unidade | null>(null);
   const [saving, setSaving] = useState(false);
@@ -28,8 +33,15 @@ export default function UnidadesPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const result = await fetchUnidades(query);
-        if (active) setData(result);
+        const result = await fetchUnidades({
+          q: debouncedQuery || undefined,
+          offset: (page - 1) * pageSize,
+          limit: pageSize,
+        });
+        if (active) {
+          setData(result.data);
+          setTotal(result.total);
+        }
       } catch (err) {
         if (active) toaster.erro("Erro ao carregar unidades", err);
       } finally {
@@ -42,7 +54,7 @@ export default function UnidadesPage() {
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [debouncedQuery, page]);
 
   const openCreate = () => {
     setEditing(null);
@@ -75,6 +87,7 @@ export default function UnidadesPage() {
       setOpen(false);
       setEditing(null);
       setQuery("");
+      setPage(1);
     } catch (err) {
       toaster.erro("Erro ao salvar unidade", err);
     } finally {
@@ -87,6 +100,7 @@ export default function UnidadesPage() {
       setSaving(true);
       await deleteUnidade(unit.id);
       setQuery("");
+      setPage(1);
       toaster.sucesso("Unidade removida", "A unidade foi excluida.");
     } catch (err) {
       toaster.erro("Erro ao remover unidade", err);
@@ -113,7 +127,10 @@ export default function UnidadesPage() {
             <Input
               placeholder="Buscar unidade"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
               allowClear
             />
           </Space>
@@ -122,6 +139,12 @@ export default function UnidadesPage() {
         <UnitTable
           data={data}
           loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage) => setPage(nextPage),
+          }}
           onEdit={openEdit}
           onDelete={(unit) => void handleDelete(unit)}
         />

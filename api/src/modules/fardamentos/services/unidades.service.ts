@@ -22,7 +22,16 @@ export class UnidadesService {
     return this.unidadesRepository.save(unidade);
   }
 
-  async findAll(query?: { q?: string }): Promise<UnidadeEntity[]> {
+  async findAll(query?: {
+    q?: string;
+    offset?: number;
+    limit?: number;
+  }): Promise<{
+    data: UnidadeEntity[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const qb = this.unidadesRepository.createQueryBuilder('unidade');
 
     if (query?.q) {
@@ -32,7 +41,10 @@ export class UnidadesService {
     }
 
     qb.orderBy('unidade.nome', 'ASC');
-    return qb.getMany();
+    const offset = Math.max(0, query?.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { data, total, offset, limit };
   }
 
   async findOne(id: string): Promise<UnidadeEntity> {

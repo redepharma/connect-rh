@@ -43,6 +43,8 @@ type DevolucaoWizardProps = {
   variacoesDevolucaoFiltradas: Variacao[];
   saldos: ColaboradorSaldo[];
   saldosLoading: boolean;
+  unidadesLoading?: boolean;
+  onUnidadesScroll?: () => void;
   termos: TermoInfo[];
   termosLoading: boolean;
   onGerarTermo: () => void;
@@ -75,6 +77,8 @@ export function MovimentacaoDevolucaoWizard({
   variacoesDevolucaoFiltradas,
   saldos,
   saldosLoading,
+  unidadesLoading,
+  onUnidadesScroll,
   termos,
   termosLoading,
   onGerarTermo,
@@ -196,6 +200,17 @@ export function MovimentacaoDevolucaoWizard({
                 allowClear
                 value={devolucaoUnidadeId ?? undefined}
                 onChange={(value) => setDevolucaoUnidadeId(value ?? null)}
+                onPopupScroll={(event) => {
+                  if (!onUnidadesScroll) return;
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    onUnidadesScroll();
+                  }
+                }}
+                loading={unidadesLoading}
                 options={unidades.map((u) => ({
                   label: u.nome,
                   value: u.id,

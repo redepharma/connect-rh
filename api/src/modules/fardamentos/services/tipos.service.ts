@@ -39,7 +39,14 @@ export class TiposService {
   async findAll(query?: {
     q?: string;
     unidadeId?: string;
-  }): Promise<TipoEntity[]> {
+    offset?: number;
+    limit?: number;
+  }): Promise<{
+    data: TipoEntity[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const qb = this.tiposRepository
       .createQueryBuilder('tipo')
       .leftJoinAndSelect('tipo.unidades', 'unidade');
@@ -53,7 +60,10 @@ export class TiposService {
     }
 
     qb.orderBy('tipo.nome', 'ASC');
-    return qb.getMany();
+    const offset = Math.max(0, query?.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { data, total, offset, limit };
   }
 
   async findOne(id: string): Promise<TipoEntity> {

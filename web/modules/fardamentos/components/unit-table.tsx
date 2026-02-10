@@ -7,6 +7,12 @@ import type { Unidade } from "../types/fardamentos.types";
 type UnitTableProps = {
   data: Unidade[];
   loading?: boolean;
+  pagination?: {
+    current: number;
+    pageSize: number;
+    total: number;
+    onChange: (page: number, pageSize: number) => void;
+  };
   onEdit?: (unidade: Unidade) => void;
   onDelete?: (unidade: Unidade) => void;
 };
@@ -14,6 +20,7 @@ type UnitTableProps = {
 export function UnitTable({
   data,
   loading,
+  pagination,
   onEdit,
   onDelete,
 }: UnitTableProps) {
@@ -75,7 +82,18 @@ export function UnitTable({
       columns={columns}
       dataSource={data}
       loading={loading}
-      pagination={false}
+      pagination={
+        pagination
+          ? {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              onChange: pagination.onChange,
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }
+          : false
+      }
       className="border border-neutral-200/70"
     />
   );

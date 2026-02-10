@@ -7,11 +7,23 @@ import type { TipoFardamento } from "../types/fardamentos.types";
 type TipoTableProps = {
   data: TipoFardamento[];
   loading?: boolean;
+  pagination?: {
+    current: number;
+    pageSize: number;
+    total: number;
+    onChange: (page: number, pageSize: number) => void;
+  };
   onEdit?: (tipo: TipoFardamento) => void;
   onDelete?: (tipo: TipoFardamento) => void;
 };
 
-export function TipoTable({ data, loading, onEdit, onDelete }: TipoTableProps) {
+export function TipoTable({
+  data,
+  loading,
+  pagination,
+  onEdit,
+  onDelete,
+}: TipoTableProps) {
   const columns: ColumnsType<TipoFardamento> = [
     {
       title: "Tipo",
@@ -74,7 +86,18 @@ export function TipoTable({ data, loading, onEdit, onDelete }: TipoTableProps) {
       columns={columns}
       dataSource={data}
       loading={loading}
-      pagination={false}
+      pagination={
+        pagination
+          ? {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              onChange: pagination.onChange,
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }
+          : false
+      }
       className="border border-neutral-200/70"
     />
   );

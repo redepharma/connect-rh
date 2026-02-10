@@ -17,12 +17,14 @@ import { EstoqueService } from './services/estoque.service';
 import { MovimentacoesService } from './services/movimentacoes.service';
 import { TermosService } from './services/termos.service';
 import { AvariasService } from './services/avarias.service';
+import { MetricasService } from './services/metricas.service';
 import { UnidadesController } from './controllers/unidades.controller';
 import { TiposController } from './controllers/tipos.controller';
 import { VariacoesController } from './controllers/variacoes.controller';
 import { EstoqueController } from './controllers/estoque.controller';
 import { MovimentacoesController } from './controllers/movimentacoes.controller';
 import { TermosController } from './controllers/termos.controller';
+import { MetricasController } from './controllers/metricas.controller';
 
 @Module({
   imports: [
@@ -49,6 +51,7 @@ import { TermosController } from './controllers/termos.controller';
     EstoqueController,
     MovimentacoesController,
     TermosController,
+    MetricasController,
   ],
   providers: [
     UnidadesService,
@@ -58,6 +61,7 @@ import { TermosController } from './controllers/termos.controller';
     MovimentacoesService,
     TermosService,
     AvariasService,
+    MetricasService,
   ],
 })
 export class FardamentosModule {}

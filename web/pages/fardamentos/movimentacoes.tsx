@@ -43,6 +43,7 @@ import {
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { parseApiError } from "@/shared/error-handlers/api-errors";
 import { toaster } from "@/components/toaster";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const { RangePicker } = DatePicker;
 
@@ -56,6 +57,9 @@ const colaboradoresMock = [
 export default function MovimentacoesPage() {
   const [data, setData] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
     q: "",
     unidadeId: undefined as string | undefined,
@@ -64,8 +68,21 @@ export default function MovimentacoesPage() {
     startDate: undefined as string | undefined,
     endDate: undefined as string | undefined,
   });
+  const debouncedFiltersQ = useDebounce(filters.q);
+  const {
+    unidadeId: filtroUnidadeId,
+    tipo: filtroTipo,
+    status: filtroStatus,
+    startDate: filtroStartDate,
+    endDate: filtroEndDate,
+  } = filters;
 
   const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadesQuery, setUnidadesQuery] = useState("");
+  const debouncedUnidadesQuery = useDebounce(unidadesQuery);
+  const [unidadesOffset, setUnidadesOffset] = useState(0);
+  const [unidadesHasMore, setUnidadesHasMore] = useState(true);
+  const [unidadesLoading, setUnidadesLoading] = useState(false);
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [openEntrega, setOpenEntrega] = useState(false);
   const [openDevolucao, setOpenDevolucao] = useState(false);
@@ -130,13 +147,29 @@ export default function MovimentacoesPage() {
     setLoading(true);
     try {
       const [movResult, unidadesResult, variacoesResult] = await Promise.all([
-        fetchMovimentacoes(filters),
-        fetchUnidades(),
-        fetchVariacoes(),
+        fetchMovimentacoes({
+          q: debouncedFiltersQ || undefined,
+          unidadeId: filtroUnidadeId,
+          tipo: filtroTipo,
+          status: filtroStatus,
+          startDate: filtroStartDate,
+          endDate: filtroEndDate,
+          offset: (page - 1) * pageSize,
+          limit: pageSize,
+        }),
+        fetchUnidades({
+          q: debouncedUnidadesQuery || undefined,
+          offset: 0,
+          limit: 10,
+        }),
+        fetchVariacoes({ offset: 0, limit: 10 }),
       ]);
-      setData(mapMovimentacoesToUi(movResult));
-      setUnidades(unidadesResult);
-      setVariacoes(mapVariacoesToUi(variacoesResult));
+      setData(mapMovimentacoesToUi(movResult.data));
+      setTotal(movResult.total);
+      setUnidades(unidadesResult.data);
+      setUnidadesOffset(unidadesResult.data.length);
+      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+      setVariacoes(mapVariacoesToUi(variacoesResult.data));
     } catch (err) {
       toaster.erro("Erro ao carregar movimentacoes", err);
     } finally {
@@ -146,7 +179,36 @@ export default function MovimentacoesPage() {
 
   useEffect(() => {
     void load();
-  }, [filters]);
+  }, [
+    debouncedFiltersQ,
+    filtroUnidadeId,
+    filtroTipo,
+    filtroStatus,
+    filtroStartDate,
+    filtroEndDate,
+    page,
+    debouncedUnidadesQuery,
+  ]);
+
+  const loadMoreUnidades = async () => {
+    if (unidadesLoading || !unidadesHasMore) return;
+    setUnidadesLoading(true);
+    try {
+      const result = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: unidadesOffset,
+        limit: 10,
+      });
+      setUnidades((prev) => [...prev, ...result.data]);
+      const nextOffset = unidadesOffset + result.data.length;
+      setUnidadesOffset(nextOffset);
+      setUnidadesHasMore(nextOffset < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  };
 
   useEffect(() => {
     const colaboradorId = devolucaoColaborador?.id;
@@ -279,9 +341,13 @@ export default function MovimentacoesPage() {
               reservado: item.reservado,
             }))
           : mapEstoqueToUi(
-              await fetchEstoque({
-                unidadeId: values.unidadeId,
-              }),
+              (
+                await fetchEstoque({
+                  unidadeId: values.unidadeId,
+                  offset: 0,
+                  limit: 10,
+                })
+              ).data,
             );
       const estoqueMap = new Map(
         estoqueUi.map((item) => [item.variacaoId, item]),
@@ -549,14 +615,37 @@ export default function MovimentacoesPage() {
             <Input
               placeholder="Buscar colaborador"
               value={filters.q}
-              onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+              onChange={(e) => {
+                setFilters({ ...filters, q: e.target.value });
+                setPage(1);
+              }}
               allowClear
             />
             <Select
               placeholder="Unidade"
               allowClear
               value={filters.unidadeId}
-              onChange={(value) => setFilters({ ...filters, unidadeId: value })}
+              onChange={(value) => {
+                setFilters({ ...filters, unidadeId: value });
+                setPage(1);
+              }}
+              showSearch
+              onSearch={(value) => {
+                setUnidadesQuery(value);
+                setUnidadesOffset(0);
+                setUnidadesHasMore(true);
+              }}
+              onPopupScroll={(event) => {
+                const target = event.target as HTMLDivElement;
+                if (
+                  target.scrollTop + target.offsetHeight >=
+                  target.scrollHeight - 16
+                ) {
+                  void loadMoreUnidades();
+                }
+              }}
+              filterOption={false}
+              loading={unidadesLoading}
               options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
               style={{ minWidth: 180 }}
             />
@@ -564,7 +653,10 @@ export default function MovimentacoesPage() {
               placeholder="Tipo"
               allowClear
               value={filters.tipo}
-              onChange={(value) => setFilters({ ...filters, tipo: value })}
+              onChange={(value) => {
+                setFilters({ ...filters, tipo: value });
+                setPage(1);
+              }}
               options={[
                 { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
                 { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
@@ -575,7 +667,10 @@ export default function MovimentacoesPage() {
               placeholder="Status"
               allowClear
               value={filters.status}
-              onChange={(value) => setFilters({ ...filters, status: value })}
+              onChange={(value) => {
+                setFilters({ ...filters, status: value });
+                setPage(1);
+              }}
               options={[
                 { label: "Separado", value: MovimentacaoStatus.SEPARADO },
                 { label: "Em transito", value: MovimentacaoStatus.EM_TRANSITO },
@@ -585,13 +680,14 @@ export default function MovimentacoesPage() {
               style={{ minWidth: 160 }}
             />
             <RangePicker
-              onChange={(dates) =>
+              onChange={(dates) => {
                 setFilters({
                   ...filters,
                   startDate: dates?.[0]?.toISOString(),
                   endDate: dates?.[1]?.toISOString(),
-                })
-              }
+                });
+                setPage(1);
+              }}
             />
           </Space>
         }
@@ -601,6 +697,14 @@ export default function MovimentacoesPage() {
           columns={columns}
           dataSource={data}
           loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage) => setPage(nextPage),
+            showSizeChanger: false,
+            showTotal: (value) => `Total: ${value}`,
+          }}
         />
       </SectionCard>
 
@@ -623,8 +727,10 @@ export default function MovimentacoesPage() {
           if (value) {
             const estoqueResult = await fetchEstoque({
               unidadeId: value,
+              offset: 0,
+              limit: 10,
             });
-            const estoqueUi = mapEstoqueToUi(estoqueResult);
+            const estoqueUi = mapEstoqueToUi(estoqueResult.data);
             setEstoqueEntrega(
               estoqueUi.map((item) => ({
                 variacaoId: item.variacaoId,
@@ -642,6 +748,8 @@ export default function MovimentacoesPage() {
         setEntregaTamanho={setEntregaTamanho}
         termos={entregaTermos}
         termosLoading={entregaTermosLoading}
+        unidadesLoading={unidadesLoading}
+        onUnidadesScroll={loadMoreUnidades}
         onGerarTermo={handleGerarTermoEntrega}
         onAbrirTermo={handleAbrirTermo}
         onBaixarTermo={handleBaixarTermo}
@@ -678,8 +786,10 @@ export default function MovimentacoesPage() {
               setEntregaUnidadeId(currentUnidadeId);
               const estoqueResult = await fetchEstoque({
                 unidadeId: currentUnidadeId,
+                offset: 0,
+                limit: 10,
               });
-              const estoqueUi = mapEstoqueToUi(estoqueResult);
+              const estoqueUi = mapEstoqueToUi(estoqueResult.data);
               setEstoqueEntrega(
                 estoqueUi.map((item) => ({
                   variacaoId: item.variacaoId,
@@ -728,8 +838,10 @@ export default function MovimentacoesPage() {
           if (value) {
             const estoqueResult = await fetchEstoque({
               unidadeId: value,
+              offset: 0,
+              limit: 10,
             });
-            const estoqueUi = mapEstoqueToUi(estoqueResult);
+            const estoqueUi = mapEstoqueToUi(estoqueResult.data);
             setDevolucaoEstoqueIds(estoqueUi.map((item) => item.variacaoId));
           } else {
             setDevolucaoEstoqueIds([]);
@@ -743,6 +855,8 @@ export default function MovimentacoesPage() {
         variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
         saldos={saldosDevolucaoFiltrados}
         saldosLoading={devolucaoSaldosLoading}
+        unidadesLoading={unidadesLoading}
+        onUnidadesScroll={loadMoreUnidades}
         termos={devolucaoTermos}
         termosLoading={devolucaoTermosLoading}
         onGerarTermo={handleGerarTermoDevolucao}

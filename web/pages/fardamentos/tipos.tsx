@@ -15,13 +15,23 @@ import {
 } from "@/modules/fardamentos/services/fardamentos.service";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function TiposPage() {
   const [data, setData] = useState<TipoFardamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query);
   const [unidadeId, setUnidadeId] = useState<string | undefined>();
   const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [total, setTotal] = useState(0);
+  const [unidadesQuery, setUnidadesQuery] = useState("");
+  const debouncedUnidadesQuery = useDebounce(unidadesQuery);
+  const [unidadesOffset, setUnidadesOffset] = useState(0);
+  const [unidadesHasMore, setUnidadesHasMore] = useState(true);
+  const [unidadesLoading, setUnidadesLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TipoFardamento | null>(null);
   const [saving, setSaving] = useState(false);
@@ -34,12 +44,24 @@ export default function TiposPage() {
       setLoading(true);
       try {
         const [tiposResult, unidadesResult] = await Promise.all([
-          fetchTipos(query, unidadeId),
-          fetchUnidades(),
+          fetchTipos({
+            q: debouncedQuery || undefined,
+            unidadeId,
+            offset: (page - 1) * pageSize,
+            limit: pageSize,
+          }),
+          fetchUnidades({
+            q: debouncedUnidadesQuery || undefined,
+            offset: 0,
+            limit: 10,
+          }),
         ]);
         if (active) {
-          setData(mapTiposToUi(tiposResult));
-          setUnidades(unidadesResult);
+          setData(mapTiposToUi(tiposResult.data));
+          setTotal(tiposResult.total);
+          setUnidades(unidadesResult.data);
+          setUnidadesOffset(unidadesResult.data.length);
+          setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
         }
       } catch (err) {
         if (active) toaster.erro("Erro ao carregar tipos", err);
@@ -53,7 +75,27 @@ export default function TiposPage() {
     return () => {
       active = false;
     };
-  }, [query, unidadeId]);
+  }, [debouncedQuery, unidadeId, page, debouncedUnidadesQuery]);
+
+  const loadMoreUnidades = async () => {
+    if (unidadesLoading || !unidadesHasMore) return;
+    setUnidadesLoading(true);
+    try {
+      const result = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: unidadesOffset,
+        limit: 10,
+      });
+      setUnidades((prev) => [...prev, ...result.data]);
+      const nextOffset = unidadesOffset + result.data.length;
+      setUnidadesOffset(nextOffset);
+      setUnidadesHasMore(nextOffset < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -86,6 +128,7 @@ export default function TiposPage() {
       setOpen(false);
       setEditing(null);
       setQuery("");
+      setPage(1);
     } catch (err) {
       toaster.erro("Erro ao salvar tipo", err);
     } finally {
@@ -98,6 +141,7 @@ export default function TiposPage() {
       setSaving(true);
       await deleteTipo(tipo.id);
       setQuery("");
+      setPage(1);
       toaster.sucesso("Tipo removido", "O tipo foi excluido.");
     } catch (err) {
       toaster.erro("Erro ao remover tipo", err);
@@ -124,14 +168,37 @@ export default function TiposPage() {
             <Input
               placeholder="Buscar tipo"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
               allowClear
             />
             <Select
               placeholder="Filtrar unidade"
               value={unidadeId}
               allowClear
-              onChange={(value) => setUnidadeId(value)}
+              onChange={(value) => {
+                setUnidadeId(value);
+                setPage(1);
+              }}
+              showSearch
+              onSearch={(value) => {
+                setUnidadesQuery(value);
+                setUnidadesOffset(0);
+                setUnidadesHasMore(true);
+              }}
+              onPopupScroll={(event) => {
+                const target = event.target as HTMLDivElement;
+                if (
+                  target.scrollTop + target.offsetHeight >=
+                  target.scrollHeight - 16
+                ) {
+                  void loadMoreUnidades();
+                }
+              }}
+              filterOption={false}
+              loading={unidadesLoading}
               options={unidades.map((unit) => ({
                 label: unit.nome,
                 value: unit.id,
@@ -144,6 +211,12 @@ export default function TiposPage() {
         <TipoTable
           data={data}
           loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage) => setPage(nextPage),
+          }}
           onEdit={openEdit}
           onDelete={(tipo) => void handleDelete(tipo)}
         />

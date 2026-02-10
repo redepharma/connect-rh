@@ -19,10 +19,30 @@ import {
 } from "@/modules/fardamentos/types/movimentacoes.enums";
 import { apiClient } from "@/shared/api-client.service";
 
-export const fetchUnidades = (q?: string) =>
-  apiClient<Unidade[]>("/fardamentos/unidades", {
+export type PaginatedResponse<T> = {
+  data: T[];
+  total: number;
+  offset: number;
+  limit: number;
+};
+
+export type DashboardMetrics = {
+  unidades: number;
+  tipos: number;
+  variacoes: number;
+  estoqueTotal: number;
+  estoqueReservado: number;
+  lowStockCount: number;
+};
+
+export const fetchUnidades = (params?: {
+  q?: string;
+  offset?: number;
+  limit?: number;
+}) =>
+  apiClient<PaginatedResponse<Unidade>>("/fardamentos/unidades", {
     method: "GET",
-    query: q ? { q } : undefined,
+    query: params,
   });
 
 export const createUnidade = (data: {
@@ -49,10 +69,15 @@ export const deleteUnidade = (id: string) =>
     method: "DELETE",
   });
 
-export const fetchTipos = (q?: string, unidadeId?: string) =>
-  apiClient<TipoResponse[]>("/fardamentos/tipos", {
+export const fetchTipos = (params?: {
+  q?: string;
+  unidadeId?: string;
+  offset?: number;
+  limit?: number;
+}) =>
+  apiClient<PaginatedResponse<TipoResponse>>("/fardamentos/tipos", {
     method: "GET",
-    query: { q, unidadeId },
+    query: params,
   });
 
 export const createTipo = (data: { nome: string; unidadesIds: string[] }) =>
@@ -75,10 +100,15 @@ export const deleteTipo = (id: string) =>
     method: "DELETE",
   });
 
-export const fetchVariacoes = (q?: string, tipoId?: string) =>
-  apiClient<VariacaoResponse[]>("/fardamentos/variacoes", {
+export const fetchVariacoes = (params?: {
+  q?: string;
+  tipoId?: string;
+  offset?: number;
+  limit?: number;
+}) =>
+  apiClient<PaginatedResponse<VariacaoResponse>>("/fardamentos/variacoes", {
     method: "GET",
-    query: { q, tipoId },
+    query: params,
   });
 
 export const createVariacao = (data: {
@@ -111,8 +141,10 @@ export const fetchEstoque = (filters?: {
   tipoId?: string;
   variacaoId?: string;
   baixoEstoque?: boolean;
+  offset?: number;
+  limit?: number;
 }) =>
-  apiClient<EstoqueResponse[]>("/fardamentos/estoque", {
+  apiClient<PaginatedResponse<EstoqueResponse>>("/fardamentos/estoque", {
     method: "GET",
     query: {
       q: filters?.q,
@@ -120,6 +152,8 @@ export const fetchEstoque = (filters?: {
       tipoId: filters?.tipoId,
       variacaoId: filters?.variacaoId,
       baixoEstoque: filters?.baixoEstoque ? true : undefined,
+      offset: filters?.offset,
+      limit: filters?.limit,
     },
   });
 
@@ -180,17 +214,29 @@ export const fetchMovimentacoes = (filters?: {
   status?: MovimentacaoStatus;
   startDate?: string;
   endDate?: string;
+  offset?: number;
+  limit?: number;
 }) =>
-  apiClient<MovimentacaoResponse[]>("/fardamentos/movimentacoes", {
-    method: "GET",
-    query: {
-      q: filters?.q,
-      unidadeId: filters?.unidadeId,
-      tipo: filters?.tipo,
-      status: filters?.status,
-      startDate: filters?.startDate,
-      endDate: filters?.endDate,
+  apiClient<PaginatedResponse<MovimentacaoResponse>>(
+    "/fardamentos/movimentacoes",
+    {
+      method: "GET",
+      query: {
+        q: filters?.q,
+        unidadeId: filters?.unidadeId,
+        tipo: filters?.tipo,
+        status: filters?.status,
+        startDate: filters?.startDate,
+        endDate: filters?.endDate,
+        offset: filters?.offset,
+        limit: filters?.limit,
+      },
     },
+  );
+
+export const fetchMetrics = () =>
+  apiClient<DashboardMetrics>("/fardamentos/metricas", {
+    method: "GET",
   });
 
 export const createEntrega = (payload: {

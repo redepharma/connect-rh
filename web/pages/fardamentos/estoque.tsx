@@ -16,16 +16,31 @@ import type {
 } from "@/modules/fardamentos/types/fardamentos.types";
 import { mapTiposToUi } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function EstoquePage() {
   const [data, setData] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query);
   const [unidadeId, setUnidadeId] = useState<string | undefined>();
   const [tipoId, setTipoId] = useState<string | undefined>();
   const [baixoEstoque, setBaixoEstoque] = useState(false);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [tipos, setTipos] = useState<TipoFardamento[]>([]);
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  const [total, setTotal] = useState(0);
+  const [unidadesQuery, setUnidadesQuery] = useState("");
+  const debouncedUnidadesQuery = useDebounce(unidadesQuery);
+  const [unidadesOffset, setUnidadesOffset] = useState(0);
+  const [unidadesHasMore, setUnidadesHasMore] = useState(true);
+  const [unidadesLoading, setUnidadesLoading] = useState(false);
+  const [tiposQuery, setTiposQuery] = useState("");
+  const debouncedTiposQuery = useDebounce(tiposQuery);
+  const [tiposOffset, setTiposOffset] = useState(0);
+  const [tiposHasMore, setTiposHasMore] = useState(true);
+  const [tiposLoading, setTiposLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -34,14 +49,34 @@ export default function EstoquePage() {
       setLoading(true);
       try {
         const [estoqueResult, unidadesResult, tiposResult] = await Promise.all([
-          fetchEstoque({ q: query, unidadeId, tipoId, baixoEstoque }),
-          fetchUnidades(),
-          fetchTipos(),
+          fetchEstoque({
+            q: debouncedQuery || undefined,
+            unidadeId,
+            tipoId,
+            baixoEstoque,
+            offset: (page - 1) * pageSize,
+            limit: pageSize,
+          }),
+          fetchUnidades({
+            q: debouncedUnidadesQuery || undefined,
+            offset: 0,
+            limit: 10,
+          }),
+          fetchTipos({
+            q: debouncedTiposQuery || undefined,
+            offset: 0,
+            limit: 10,
+          }),
         ]);
         if (active) {
-          setData(mapEstoqueToUi(estoqueResult));
-          setUnidades(unidadesResult);
-          setTipos(mapTiposToUi(tiposResult));
+          setData(mapEstoqueToUi(estoqueResult.data));
+          setTotal(estoqueResult.total);
+          setUnidades(unidadesResult.data);
+          setUnidadesOffset(unidadesResult.data.length);
+          setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+          setTipos(mapTiposToUi(tiposResult.data));
+          setTiposOffset(tiposResult.data.length);
+          setTiposHasMore(tiposResult.data.length < tiposResult.total);
         }
       } catch (err) {
         if (active) toaster.erro("Erro ao carregar estoque", err);
@@ -55,7 +90,55 @@ export default function EstoquePage() {
     return () => {
       active = false;
     };
-  }, [query, unidadeId, tipoId, baixoEstoque]);
+  }, [
+    debouncedQuery,
+    unidadeId,
+    tipoId,
+    baixoEstoque,
+    page,
+    debouncedUnidadesQuery,
+    debouncedTiposQuery,
+  ]);
+
+  const loadMoreUnidades = async () => {
+    if (unidadesLoading || !unidadesHasMore) return;
+    setUnidadesLoading(true);
+    try {
+      const result = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: unidadesOffset,
+        limit: 10,
+      });
+      setUnidades((prev) => [...prev, ...result.data]);
+      const nextOffset = unidadesOffset + result.data.length;
+      setUnidadesOffset(nextOffset);
+      setUnidadesHasMore(nextOffset < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  };
+
+  const loadMoreTipos = async () => {
+    if (tiposLoading || !tiposHasMore) return;
+    setTiposLoading(true);
+    try {
+      const result = await fetchTipos({
+        q: debouncedTiposQuery || undefined,
+        offset: tiposOffset,
+        limit: 10,
+      });
+      setTipos((prev) => [...prev, ...mapTiposToUi(result.data)]);
+      const nextOffset = tiposOffset + result.data.length;
+      setTiposOffset(nextOffset);
+      setTiposHasMore(nextOffset < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar tipos", err);
+    } finally {
+      setTiposLoading(false);
+    }
+  };
 
   return (
     <FardamentosShell
@@ -71,14 +154,37 @@ export default function EstoquePage() {
             <Input
               placeholder="Buscar item"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setPage(1);
+              }}
               allowClear
             />
             <Select
               placeholder="Filtrar unidade"
               value={unidadeId}
               allowClear
-              onChange={(value) => setUnidadeId(value)}
+              onChange={(value) => {
+                setUnidadeId(value);
+                setPage(1);
+              }}
+              showSearch
+              onSearch={(value) => {
+                setUnidadesQuery(value);
+                setUnidadesOffset(0);
+                setUnidadesHasMore(true);
+              }}
+              onPopupScroll={(event) => {
+                const target = event.target as HTMLDivElement;
+                if (
+                  target.scrollTop + target.offsetHeight >=
+                  target.scrollHeight - 16
+                ) {
+                  void loadMoreUnidades();
+                }
+              }}
+              filterOption={false}
+              loading={unidadesLoading}
               options={unidades.map((unit) => ({
                 label: unit.nome,
                 value: unit.id,
@@ -89,7 +195,27 @@ export default function EstoquePage() {
               placeholder="Filtrar tipo"
               value={tipoId}
               allowClear
-              onChange={(value) => setTipoId(value)}
+              onChange={(value) => {
+                setTipoId(value);
+                setPage(1);
+              }}
+              showSearch
+              onSearch={(value) => {
+                setTiposQuery(value);
+                setTiposOffset(0);
+                setTiposHasMore(true);
+              }}
+              onPopupScroll={(event) => {
+                const target = event.target as HTMLDivElement;
+                if (
+                  target.scrollTop + target.offsetHeight >=
+                  target.scrollHeight - 16
+                ) {
+                  void loadMoreTipos();
+                }
+              }}
+              filterOption={false}
+              loading={tiposLoading}
               options={tipos.map((tipo) => ({
                 label: tipo.nome,
                 value: tipo.id,
@@ -98,14 +224,26 @@ export default function EstoquePage() {
             />
             <Switch
               checked={baixoEstoque}
-              onChange={(checked) => setBaixoEstoque(checked)}
+              onChange={(checked) => {
+                setBaixoEstoque(checked);
+                setPage(1);
+              }}
               checkedChildren="Baixo estoque"
               unCheckedChildren="Todos"
             />
           </Space>
         }
       >
-        <EstoqueTable data={data} loading={loading} />
+        <EstoqueTable
+          data={data}
+          loading={loading}
+          pagination={{
+            current: page,
+            pageSize,
+            total,
+            onChange: (nextPage) => setPage(nextPage),
+          }}
+        />
       </SectionCard>
     </FardamentosShell>
   );

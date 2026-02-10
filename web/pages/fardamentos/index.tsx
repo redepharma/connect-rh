@@ -4,15 +4,24 @@ import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-s
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/types/fardamentos.constants";
-import type { EstoqueItem, TipoFardamento, Unidade, Variacao } from "@/modules/fardamentos/types/fardamentos.types";
-import { fetchEstoque, fetchTipos, fetchUnidades, fetchVariacoes, mapEstoqueToUi, mapTiposToUi, mapVariacoesToUi } from "@/modules/fardamentos/services/fardamentos.service";
+import type { EstoqueItem } from "@/modules/fardamentos/types/fardamentos.types";
+import {
+  fetchEstoque,
+  fetchMetrics,
+  mapEstoqueToUi,
+} from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 
 export default function FardamentosOverview() {
-  const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [tipos, setTipos] = useState<TipoFardamento[]>([]);
-  const [variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
+  const [metrics, setMetrics] = useState<{
+    unidades: number;
+    tipos: number;
+    variacoes: number;
+    estoqueTotal: number;
+    estoqueReservado: number;
+    lowStockCount: number;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,20 +30,15 @@ export default function FardamentosOverview() {
     const load = async () => {
       setLoading(true);
       try {
-        const [unidadesResult, tiposResult, variacoesResult, estoqueResult] =
-          await Promise.all([
-            fetchUnidades(),
-            fetchTipos(),
-            fetchVariacoes(),
-            fetchEstoque(),
-          ]);
+        const [metricsResult, estoqueResult] = await Promise.all([
+          fetchMetrics(),
+          fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
+        ]);
 
         if (!active) return;
 
-        setUnidades(unidadesResult);
-        setTipos(mapTiposToUi(tiposResult));
-        setVariacoes(mapVariacoesToUi(variacoesResult));
-        setEstoque(mapEstoqueToUi(estoqueResult));
+        setMetrics(metricsResult);
+        setEstoque(mapEstoqueToUi(estoqueResult.data));
       } catch (err) {
         if (active) toaster.erro("Erro ao carregar dados do painel", err);
       } finally {
@@ -49,8 +53,8 @@ export default function FardamentosOverview() {
     };
   }, []);
 
-  const totalEstoque = estoque.reduce((acc, item) => acc + item.total, 0);
-  const totalReservado = estoque.reduce((acc, item) => acc + item.reservado, 0);
+  const totalEstoque = metrics?.estoqueTotal ?? 0;
+  const totalReservado = metrics?.estoqueReservado ?? 0;
   const disponivel = totalEstoque - totalReservado;
   const lowStockItems = estoque.filter(
     (item) => item.total - item.reservado < LOW_STOCK_THRESHOLD,
@@ -75,20 +79,20 @@ export default function FardamentosOverview() {
         />
         <KpiCard
           title="Alertas de baixo estoque"
-          value={loading ? "--" : lowStockItems.length}
+          value={loading ? "--" : (metrics?.lowStockCount ?? 0)}
           helper={`Limite: < ${LOW_STOCK_THRESHOLD}`}
-          tag={lowStockItems.length ? "Atencao" : "OK"}
-          tagColor={lowStockItems.length ? "red" : "green"}
+          tag={(metrics?.lowStockCount ?? 0) ? "Atencao" : "OK"}
+          tagColor={(metrics?.lowStockCount ?? 0) ? "red" : "green"}
         />
         <KpiCard
           title="Unidades ativas"
-          value={loading ? "--" : unidades.length}
+          value={loading ? "--" : (metrics?.unidades ?? 0)}
           helper="Unidades cadastradas"
         />
         <KpiCard
           title="Tipos e variacoes"
-          value={loading ? "--" : `${tipos.length} tipos`}
-          helper={`${variacoes.length} variacoes cadastradas`}
+          value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
+          helper={`${metrics?.variacoes ?? 0} variacoes cadastradas`}
         />
       </section>
 
@@ -105,7 +109,11 @@ export default function FardamentosOverview() {
               </Typography.Text>
             ) : (
               lowStockItems.map((item) => (
-                <Card key={item.id} className="border border-neutral-200/70" size="small">
+                <Card
+                  key={item.id}
+                  className="border border-neutral-200/70"
+                  size="small"
+                >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <Typography.Text className="text-sm font-medium text-neutral-900">

@@ -11,7 +11,12 @@ export class EstoqueService {
     private readonly estoqueRepository: Repository<EstoqueEntity>,
   ) {}
 
-  async findAll(query: EstoqueQueryDto): Promise<EstoqueEntity[]> {
+  async findAll(query: EstoqueQueryDto): Promise<{
+    data: EstoqueEntity[];
+    total: number;
+    offset: number;
+    limit: number;
+  }> {
     const qb = this.estoqueRepository
       .createQueryBuilder('estoque')
       .leftJoinAndSelect('estoque.variacao', 'variacao')
@@ -47,7 +52,10 @@ export class EstoqueService {
 
     qb.orderBy('tipo.nome', 'ASC');
 
-    return qb.getMany();
+    const offset = Math.max(0, query?.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    return { data, total, offset, limit };
   }
 
   async findOne(id: string): Promise<EstoqueEntity> {

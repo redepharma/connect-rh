@@ -8,9 +8,15 @@ import type { EstoqueItem } from "../types/fardamentos.types";
 type EstoqueTableProps = {
   data: EstoqueItem[];
   loading?: boolean;
+  pagination?: {
+    current: number;
+    pageSize: number;
+    total: number;
+    onChange: (page: number, pageSize: number) => void;
+  };
 };
 
-export function EstoqueTable({ data, loading }: EstoqueTableProps) {
+export function EstoqueTable({ data, loading, pagination }: EstoqueTableProps) {
   const columns: ColumnsType<EstoqueItem> = [
     {
       title: "Tipo",
@@ -62,7 +68,18 @@ export function EstoqueTable({ data, loading }: EstoqueTableProps) {
       columns={columns}
       dataSource={data}
       loading={loading}
-      pagination={false}
+      pagination={
+        pagination
+          ? {
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              onChange: pagination.onChange,
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }
+          : false
+      }
       className="border border-neutral-200/70"
     />
   );
