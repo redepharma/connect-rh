@@ -1,16 +1,15 @@
-import { Alert, Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { UnitTable } from "@/modules/fardamentos/components/unit-table";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import { createUnidade, deleteUnidade, fetchUnidades, updateUnidade } from "@/modules/fardamentos/services/fardamentos.service";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 export default function UnidadesPage() {
   const [data, setData] = useState<Unidade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Unidade | null>(null);
@@ -22,12 +21,11 @@ export default function UnidadesPage() {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
         const result = await fetchUnidades(query);
         if (active) setData(result);
       } catch (err) {
-        if (active) setError(parseApiError(err).message);
+        if (active) toaster.erro("Erro ao carregar unidades", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -63,14 +61,16 @@ export default function UnidadesPage() {
       setSaving(true);
       if (editing) {
         await updateUnidade(editing.id, values);
+        toaster.sucesso("Unidade atualizada", "Os dados foram salvos.");
       } else {
         await createUnidade(values);
+        toaster.sucesso("Unidade criada", "A unidade foi cadastrada.");
       }
       setOpen(false);
       setEditing(null);
       setQuery("");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao salvar unidade", err);
     } finally {
       setSaving(false);
     }
@@ -81,8 +81,9 @@ export default function UnidadesPage() {
       setSaving(true);
       await deleteUnidade(unit.id);
       setQuery("");
+      toaster.sucesso("Unidade removida", "A unidade foi excluida.");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao remover unidade", err);
     } finally {
       setSaving(false);
     }
@@ -112,16 +113,12 @@ export default function UnidadesPage() {
           </Space>
         }
       >
-        {error ? (
-          <Alert type="error" message="Falha ao carregar unidades" description={error} showIcon />
-        ) : (
-          <UnitTable
-            data={data}
-            loading={loading}
-            onEdit={openEdit}
-            onDelete={(unit) => void handleDelete(unit)}
-          />
-        )}
+        <UnitTable
+          data={data}
+          loading={loading}
+          onEdit={openEdit}
+          onDelete={(unit) => void handleDelete(unit)}
+        />
       </SectionCard>
       <Modal
         open={open}

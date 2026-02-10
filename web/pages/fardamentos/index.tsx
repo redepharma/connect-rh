@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Input, Space, Typography } from "antd";
+import { Button, Card, Input, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
@@ -6,7 +6,7 @@ import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/types/fardamentos.constants";
 import type { EstoqueItem, TipoFardamento, Unidade, Variacao } from "@/modules/fardamentos/types/fardamentos.types";
 import { fetchEstoque, fetchTipos, fetchUnidades, fetchVariacoes, mapEstoqueToUi, mapTiposToUi, mapVariacoesToUi } from "@/modules/fardamentos/services/fardamentos.service";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 export default function FardamentosOverview() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
@@ -14,14 +14,12 @@ export default function FardamentosOverview() {
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
         const [unidadesResult, tiposResult, variacoesResult, estoqueResult] =
           await Promise.all([
@@ -38,7 +36,7 @@ export default function FardamentosOverview() {
         setVariacoes(mapVariacoesToUi(variacoesResult));
         setEstoque(mapEstoqueToUi(estoqueResult));
       } catch (err) {
-        if (active) setError(parseApiError(err).message);
+        if (active) toaster.erro("Erro ao carregar dados do painel", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -69,15 +67,6 @@ export default function FardamentosOverview() {
         </Space>
       }
     >
-      {error ? (
-        <Alert
-          type="error"
-          message="Falha ao carregar dados do painel"
-          description={error}
-          showIcon
-        />
-      ) : null}
-
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Estoque disponivel"

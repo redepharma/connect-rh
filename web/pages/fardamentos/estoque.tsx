@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Select, Space, Switch } from "antd";
+import { Button, Input, Select, Space, Switch } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -15,12 +15,11 @@ import type {
   TipoFardamento,
 } from "@/modules/fardamentos/types/fardamentos.types";
 import { mapTiposToUi } from "@/modules/fardamentos/services/fardamentos.service";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 export default function EstoquePage() {
   const [data, setData] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [unidadeId, setUnidadeId] = useState<string | undefined>();
   const [tipoId, setTipoId] = useState<string | undefined>();
@@ -33,7 +32,6 @@ export default function EstoquePage() {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
         const [estoqueResult, unidadesResult, tiposResult] = await Promise.all([
           fetchEstoque({ q: query, unidadeId, tipoId, baixoEstoque }),
@@ -46,7 +44,7 @@ export default function EstoquePage() {
           setTipos(mapTiposToUi(tiposResult));
         }
       } catch (err) {
-        if (active) setError(parseApiError(err).message);
+        if (active) toaster.erro("Erro ao carregar estoque", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -107,16 +105,7 @@ export default function EstoquePage() {
           </Space>
         }
       >
-        {error ? (
-          <Alert
-            type="error"
-            message="Falha ao carregar estoque"
-            description={error}
-            showIcon
-          />
-        ) : (
-          <EstoqueTable data={data} loading={loading} />
-        )}
+        <EstoqueTable data={data} loading={loading} />
       </SectionCard>
     </FardamentosShell>
   );

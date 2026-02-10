@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -6,12 +6,11 @@ import { TipoTable } from "@/modules/fardamentos/components/tipo-table";
 import type { TipoFardamento } from "@/modules/fardamentos/types/fardamentos.types";
 import { createTipo, deleteTipo, fetchTipos, fetchUnidades, mapTiposToUi, updateTipo } from "@/modules/fardamentos/services/fardamentos.service";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 export default function TiposPage() {
   const [data, setData] = useState<TipoFardamento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [unidadeId, setUnidadeId] = useState<string | undefined>();
   const [unidades, setUnidades] = useState<Unidade[]>([]);
@@ -25,7 +24,6 @@ export default function TiposPage() {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
         const [tiposResult, unidadesResult] = await Promise.all([
           fetchTipos(query, unidadeId),
@@ -36,7 +34,7 @@ export default function TiposPage() {
           setUnidades(unidadesResult);
         }
       } catch (err) {
-        if (active) setError(parseApiError(err).message);
+        if (active) toaster.erro("Erro ao carregar tipos", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -72,14 +70,16 @@ export default function TiposPage() {
       setSaving(true);
       if (editing) {
         await updateTipo(editing.id, values);
+        toaster.sucesso("Tipo atualizado", "Os dados foram salvos.");
       } else {
         await createTipo(values);
+        toaster.sucesso("Tipo criado", "O tipo foi cadastrado.");
       }
       setOpen(false);
       setEditing(null);
       setQuery("");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao salvar tipo", err);
     } finally {
       setSaving(false);
     }
@@ -90,8 +90,9 @@ export default function TiposPage() {
       setSaving(true);
       await deleteTipo(tipo.id);
       setQuery("");
+      toaster.sucesso("Tipo removido", "O tipo foi excluido.");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao remover tipo", err);
     } finally {
       setSaving(false);
     }
@@ -129,16 +130,12 @@ export default function TiposPage() {
           </Space>
         }
       >
-        {error ? (
-          <Alert type="error" message="Falha ao carregar tipos" description={error} showIcon />
-        ) : (
-          <TipoTable
-            data={data}
-            loading={loading}
-            onEdit={openEdit}
-            onDelete={(tipo) => void handleDelete(tipo)}
-          />
-        )}
+        <TipoTable
+          data={data}
+          loading={loading}
+          onEdit={openEdit}
+          onDelete={(tipo) => void handleDelete(tipo)}
+        />
       </SectionCard>
       <Modal
         open={open}

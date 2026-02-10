@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -15,12 +15,11 @@ import {
   updateVariacao,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import type { TipoFardamento } from "@/modules/fardamentos/types/fardamentos.types";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 export default function VariacoesPage() {
   const [data, setData] = useState<Variacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [tipoId, setTipoId] = useState<string | undefined>();
   const [tipos, setTipos] = useState<TipoFardamento[]>([]);
@@ -34,7 +33,6 @@ export default function VariacoesPage() {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
         const [variacoesResult, tiposResult] = await Promise.all([
           fetchVariacoes(query, tipoId),
@@ -45,7 +43,7 @@ export default function VariacoesPage() {
           setTipos(mapTiposToUi(tiposResult));
         }
       } catch (err) {
-        if (active) setError(parseApiError(err).message);
+        if (active) toaster.erro("Erro ao carregar variacoes", err);
       } finally {
         if (active) setLoading(false);
       }
@@ -81,14 +79,16 @@ export default function VariacoesPage() {
       setSaving(true);
       if (editing) {
         await updateVariacao(editing.id, values);
+        toaster.sucesso("Variacao atualizada", "Os dados foram salvos.");
       } else {
         await createVariacao(values);
+        toaster.sucesso("Variacao criada", "A variacao foi cadastrada.");
       }
       setOpen(false);
       setEditing(null);
       setQuery("");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao salvar variacao", err);
     } finally {
       setSaving(false);
     }
@@ -99,8 +99,9 @@ export default function VariacoesPage() {
       setSaving(true);
       await deleteVariacao(variacao.id);
       setQuery("");
+      toaster.sucesso("Variacao removida", "A variacao foi excluida.");
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao remover variacao", err);
     } finally {
       setSaving(false);
     }
@@ -138,21 +139,12 @@ export default function VariacoesPage() {
           </Space>
         }
       >
-        {error ? (
-          <Alert
-            type="error"
-            message="Falha ao carregar variacoes"
-            description={error}
-            showIcon
-          />
-        ) : (
-          <VariacaoTable
-            data={data}
-            loading={loading}
-            onEdit={openEdit}
-            onDelete={(variacao) => void handleDelete(variacao)}
-          />
-        )}
+        <VariacaoTable
+          data={data}
+          loading={loading}
+          onEdit={openEdit}
+          onDelete={(variacao) => void handleDelete(variacao)}
+        />
       </SectionCard>
       <Modal
         open={open}

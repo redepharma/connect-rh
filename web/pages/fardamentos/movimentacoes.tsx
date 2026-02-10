@@ -39,6 +39,7 @@ import {
   updateMovimentacaoStatus,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { toaster } from "@/components/toaster";
 
 const { RangePicker } = DatePicker;
 
@@ -52,7 +53,6 @@ const colaboradoresMock = [
 export default function MovimentacoesPage() {
   const [data, setData] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     q: "",
     unidadeId: undefined as string | undefined,
@@ -86,7 +86,6 @@ export default function MovimentacoesPage() {
 
   const load = async () => {
     setLoading(true);
-    setError(null);
     try {
       const [movResult, unidadesResult, variacoesResult] = await Promise.all([
         fetchMovimentacoes(filters),
@@ -97,7 +96,7 @@ export default function MovimentacoesPage() {
       setUnidades(unidadesResult);
       setVariacoes(mapVariacoesToUi(variacoesResult));
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao carregar movimentacoes", err);
     } finally {
       setLoading(false);
     }
@@ -173,7 +172,10 @@ export default function MovimentacoesPage() {
         }
       }
       if (!values.unidadeId) {
-        setError("Nenhuma unidade disponivel para carregar o estoque.");
+        toaster.alerta(
+          "Unidade indisponivel",
+          "Nenhuma unidade disponivel para carregar o estoque.",
+        );
         return;
       }
       const estoqueResult = await fetchEstoque({
@@ -190,13 +192,15 @@ export default function MovimentacoesPage() {
       });
 
       if (itensInvalidos.length > 0) {
-        setError(
+        toaster.alerta(
+          "Estoque insuficiente",
           "Estoque insuficiente para um ou mais itens. Verifique o saldo disponivel.",
         );
         return;
       }
       setSaving(true);
       await createEntrega(values);
+      toaster.sucesso("Entrega registrada", "A movimentacao foi criada.");
       setOpenEntrega(false);
       setStepEntrega(0);
       formEntrega.resetFields();
@@ -206,7 +210,7 @@ export default function MovimentacoesPage() {
       setEntregaTamanho(null);
       await load();
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao registrar entrega", err);
     } finally {
       setSaving(false);
     }
@@ -223,11 +227,15 @@ export default function MovimentacoesPage() {
         }
       }
       if (!values.unidadeId) {
-        setError("Nenhuma unidade disponivel para registrar a devolucao.");
+        toaster.alerta(
+          "Unidade indisponivel",
+          "Nenhuma unidade disponivel para registrar a devolucao.",
+        );
         return;
       }
       setSaving(true);
       await createDevolucao(values);
+      toaster.sucesso("Devolucao registrada", "A movimentacao foi criada.");
       setOpenDevolucao(false);
       setStepDevolucao(0);
       formDevolucao.resetFields();
@@ -237,7 +245,7 @@ export default function MovimentacoesPage() {
       setDevolucaoEstoqueIds([]);
       await load();
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao registrar devolucao", err);
     } finally {
       setSaving(false);
     }
@@ -247,9 +255,16 @@ export default function MovimentacoesPage() {
     try {
       setSaving(true);
       await updateMovimentacaoStatus(id, status);
+      const label =
+        status === MovimentacaoStatus.CONCLUIDO
+          ? "concluida"
+          : status === MovimentacaoStatus.CANCELADO
+            ? "cancelada"
+            : "atualizada";
+      toaster.sucesso("Movimentacao atualizada", `Movimentacao ${label}.`);
       await load();
     } catch (err) {
-      setError(parseApiError(err).message);
+      toaster.erro("Erro ao atualizar movimentacao", err);
     } finally {
       setSaving(false);
     }
@@ -405,21 +420,12 @@ export default function MovimentacoesPage() {
           </Space>
         }
       >
-        {error ? (
-          <Alert
-            type="error"
-            message="Falha ao carregar movimentacoes"
-            description={error}
-            showIcon
-          />
-        ) : (
-          <Table
-            rowKey="id"
-            columns={columns}
-            dataSource={data}
-            loading={loading}
-          />
-        )}
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={data}
+          loading={loading}
+        />
       </SectionCard>
 
       <Modal
@@ -462,7 +468,8 @@ export default function MovimentacoesPage() {
                       formEntrega.getFieldValue("unidadeId") ??
                       unidades[0]?.id;
                     if (!currentUnidadeId) {
-                      setError(
+                      toaster.alerta(
+                        "Unidade indisponivel",
                         "Nenhuma unidade disponivel para carregar o estoque.",
                       );
                       return;
@@ -484,7 +491,8 @@ export default function MovimentacoesPage() {
                     }
                     setStepEntrega(1);
                   } catch (err) {
-                    setError(parseApiError(err).message);
+                    const apiError = parseApiError(err);
+                    toaster.alerta("Verifique os dados", apiError.message);
                   }
                 }}
               >
@@ -771,7 +779,8 @@ export default function MovimentacoesPage() {
                     }
                     setStepDevolucao(1);
                   } catch (err) {
-                    setError(parseApiError(err).message);
+                    const apiError = parseApiError(err);
+                    toaster.alerta("Verifique os dados", apiError.message);
                   }
                 }}
               >
