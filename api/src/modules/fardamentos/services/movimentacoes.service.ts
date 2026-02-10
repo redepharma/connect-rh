@@ -207,7 +207,7 @@ export class MovimentacoesService {
 
     mov.itens = itens;
 
-    await this.movRepository.manager.transaction(async (manager) => {
+    await this.runWithRetry(async (manager) => {
       const savedMov = await manager.save(MovimentacaoEntity, mov);
       const savedItens = await manager.save(
         MovimentacaoItemEntity,
@@ -265,7 +265,7 @@ export class MovimentacoesService {
       throw new BadRequestException('Transicao de status invalida');
     }
 
-    await this.movRepository.manager.transaction(async (manager) => {
+    await this.runWithRetry(async (manager) => {
       if (status === 'CANCELADO') {
         if (mov.status === 'CONCLUIDO') {
           throw new BadRequestException('Movimentacao ja concluida');
@@ -332,6 +332,31 @@ export class MovimentacoesService {
     });
 
     return this.findOne(id);
+  }
+
+  private async runWithRetry<T>(
+    fn: (manager: Repository<MovimentacaoEntity>['manager']) => Promise<T>,
+    retries = 2,
+    delayMs = 150,
+  ): Promise<T> {
+    let attempt = 0;
+
+    while (true) {
+      try {
+        return await this.movRepository.manager.transaction(fn);
+      } catch (err) {
+        const code = (err as any)?.code as string | undefined;
+        const isDeadlock =
+          code === 'ER_LOCK_DEADLOCK' || code === 'ER_LOCK_WAIT_TIMEOUT';
+
+        if (!isDeadlock || attempt >= retries) {
+          throw err;
+        }
+
+        attempt += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
   }
 
   private async reservarEstoque(

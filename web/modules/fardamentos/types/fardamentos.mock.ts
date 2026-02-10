@@ -1,27 +1,103 @@
-import type { Unidade, TipoFardamento, Variacao, EstoqueItem } from "./fardamentos.types";
+import type {
+  Unidade,
+  TipoFardamento,
+  Variacao,
+  EstoqueItem,
+} from "./fardamentos.types";
 import { Genero } from "./genero.enums";
 
 export const unidadesMock: Unidade[] = [
-  { id: "uni_loja", nome: "Lojas", descricao: "Atendimento e caixa", ativo: true },
-  { id: "uni_escritorio", nome: "Escritorio", descricao: "Administrativo", ativo: true },
-  { id: "uni_limpeza", nome: "Limpeza", descricao: "Equipe de limpeza", ativo: true },
+  {
+    id: "uni_loja",
+    nome: "Lojas",
+    descricao: "Atendimento e caixa",
+    ativo: true,
+  },
+  {
+    id: "uni_escritorio",
+    nome: "Escritorio",
+    descricao: "Administrativo",
+    ativo: true,
+  },
+  {
+    id: "uni_limpeza",
+    nome: "Limpeza",
+    descricao: "Equipe de limpeza",
+    ativo: true,
+  },
   { id: "uni_bas", nome: "BAS", descricao: "Base de apoio", ativo: true },
 ];
 
 export const tiposMock: TipoFardamento[] = [
-  { id: "tipo_camisa_polo", nome: "Camisa Polo", unidades: ["Lojas", "BAS"], variacoesCount: 6 },
-  { id: "tipo_jaleco", nome: "Jaleco", unidades: ["Escritorio", "BAS"], variacoesCount: 4 },
-  { id: "tipo_calca", nome: "Calca Social", unidades: ["Lojas", "Escritorio"], variacoesCount: 5 },
-  { id: "tipo_avental", nome: "Avental", unidades: ["Limpeza"], variacoesCount: 3 },
+  {
+    id: "tipo_camisa_polo",
+    nome: "Camisa Polo",
+    unidades: ["Lojas", "BAS"],
+    variacoesCount: 6,
+  },
+  {
+    id: "tipo_jaleco",
+    nome: "Jaleco",
+    unidades: ["Escritorio", "BAS"],
+    variacoesCount: 4,
+  },
+  {
+    id: "tipo_calca",
+    nome: "Calca Social",
+    unidades: ["Lojas", "Escritorio"],
+    variacoesCount: 5,
+  },
+  {
+    id: "tipo_avental",
+    nome: "Avental",
+    unidades: ["Limpeza"],
+    variacoesCount: 3,
+  },
 ];
 
 export const variacoesMock: Variacao[] = [
-  { id: "var_polo_p_m", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "P", genero: Genero.MASCULINO },
-  { id: "var_polo_m_f", tipoId: "tipo_camisa_polo", tipoNome: "Camisa Polo", tamanho: "M", genero: Genero.FEMININO },
-  { id: "var_jaleco_m", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "M", genero: Genero.UNISSEX },
-  { id: "var_jaleco_g", tipoId: "tipo_jaleco", tipoNome: "Jaleco", tamanho: "G", genero: Genero.UNISSEX },
-  { id: "var_calca_40", tipoId: "tipo_calca", tipoNome: "Calca Social", tamanho: "40", genero: Genero.MASCULINO },
-  { id: "var_avental_u", tipoId: "tipo_avental", tipoNome: "Avental", tamanho: "Unico", genero: Genero.UNISSEX },
+  {
+    id: "var_polo_p_m",
+    tipoId: "tipo_camisa_polo",
+    tipoNome: "Camisa Polo",
+    tamanho: "P",
+    genero: Genero.MASCULINO,
+  },
+  {
+    id: "var_polo_m_f",
+    tipoId: "tipo_camisa_polo",
+    tipoNome: "Camisa Polo",
+    tamanho: "M",
+    genero: Genero.FEMININO,
+  },
+  {
+    id: "var_jaleco_m",
+    tipoId: "tipo_jaleco",
+    tipoNome: "Jaleco",
+    tamanho: "M",
+    genero: Genero.UNISSEX,
+  },
+  {
+    id: "var_jaleco_g",
+    tipoId: "tipo_jaleco",
+    tipoNome: "Jaleco",
+    tamanho: "G",
+    genero: Genero.UNISSEX,
+  },
+  {
+    id: "var_calca_40",
+    tipoId: "tipo_calca",
+    tipoNome: "Calca Social",
+    tamanho: "40",
+    genero: Genero.MASCULINO,
+  },
+  {
+    id: "var_avental_u",
+    tipoId: "tipo_avental",
+    tipoNome: "Avental",
+    tamanho: "Unico",
+    genero: Genero.UNISSEX,
+  },
 ];
 
 export const estoqueMock: EstoqueItem[] = [
@@ -70,4 +146,13 @@ export const estoqueMock: EstoqueItem[] = [
     total: 1,
     reservado: 0,
   },
+];
+
+export const colaboradoresMock: { id: string; nome: string }[] = [
+  { id: "colab_100", nome: "Paula Souza" },
+  { id: "colab_200", nome: "Marcos Lima" },
+  { id: "colab_300", nome: "Carla Andrade" },
+  { id: "colab_400", nome: "Rafael Santos" },
+  { id: "colab_500", nome: "Fernanda Paes" },
+  { id: "colab_600", nome: "Joao Silveira" },
 ];

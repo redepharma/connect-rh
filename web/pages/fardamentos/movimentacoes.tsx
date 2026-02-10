@@ -39,20 +39,19 @@ import {
   mapEstoqueToUi,
   mapMovimentacoesToUi,
   mapVariacoesToUi,
+  registrarAvarias,
   updateMovimentacaoStatus,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { parseApiError } from "@/shared/error-handlers/api-errors";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import type {
+  Avaria,
+  CreateAvariaItem,
+} from "@/modules/fardamentos/types/avarias.types";
+import { colaboradoresMock } from "@/modules/fardamentos/types/fardamentos.mock";
 
 const { RangePicker } = DatePicker;
-
-const colaboradoresMock = [
-  { id: "colab_100", nome: "Paula Souza" },
-  { id: "colab_200", nome: "Marcos Lima" },
-  { id: "colab_300", nome: "Carla Andrade" },
-  { id: "colab_400", nome: "Rafael Santos" },
-];
 
 export default function MovimentacoesPage() {
   const [data, setData] = useState<Movimentacao[]>([]);
@@ -138,6 +137,8 @@ export default function MovimentacoesPage() {
   const [devolucaoMovimentacaoId, setDevolucaoMovimentacaoId] = useState<
     string | null
   >(null);
+  const [devolucaoAvarias, setDevolucaoAvarias] = useState<Avaria[]>([]);
+  const [devolucaoAvariasLoading, setDevolucaoAvariasLoading] = useState(false);
   const [entregaTermos, setEntregaTermos] = useState<TermoInfo[]>([]);
   const [devolucaoTermos, setDevolucaoTermos] = useState<TermoInfo[]>([]);
   const [entregaTermosLoading, setEntregaTermosLoading] = useState(false);
@@ -425,6 +426,7 @@ export default function MovimentacoesPage() {
         );
       }
       setDevolucaoMovimentacaoId(created.id);
+      setDevolucaoAvarias([]);
       setStepDevolucao(2);
       setDevolucaoTermos([]);
       await load();
@@ -462,6 +464,37 @@ export default function MovimentacoesPage() {
       toaster.erro("Erro ao gerar termo", err);
     } finally {
       setDevolucaoTermosLoading(false);
+    }
+  };
+
+  const handleRegistrarAvarias = async (itens: CreateAvariaItem[]) => {
+    if (!devolucaoMovimentacaoId) {
+      toaster.alerta(
+        "Devolucao pendente",
+        "Finalize a devolucao para registrar avarias.",
+      );
+      return;
+    }
+    if (!itens.length) {
+      toaster.alerta(
+        "Informe as avarias",
+        "Adicione ao menos uma avaria para registrar.",
+      );
+      return;
+    }
+    setDevolucaoAvariasLoading(true);
+    try {
+      const saved = await registrarAvarias(devolucaoMovimentacaoId, itens);
+      setDevolucaoAvarias(saved);
+      formDevolucao.setFieldValue("avarias", []);
+      toaster.sucesso(
+        "Avarias registradas",
+        "Os itens avariados foram registrados.",
+      );
+    } catch (err) {
+      toaster.erro("Erro ao registrar avarias", err);
+    } finally {
+      setDevolucaoAvariasLoading(false);
     }
   };
 
@@ -859,9 +892,12 @@ export default function MovimentacoesPage() {
         onUnidadesScroll={loadMoreUnidades}
         termos={devolucaoTermos}
         termosLoading={devolucaoTermosLoading}
+        avariasRegistradas={devolucaoAvarias}
+        avariasLoading={devolucaoAvariasLoading}
         onGerarTermo={handleGerarTermoDevolucao}
         onAbrirTermo={handleAbrirTermo}
         onBaixarTermo={handleBaixarTermo}
+        onRegistrarAvarias={handleRegistrarAvarias}
         onColaboradorSelect={(colaborador) => {
           setDevolucaoColaborador(colaborador);
           devolucaoColaboradorRef.current = colaborador;
@@ -903,6 +939,7 @@ export default function MovimentacoesPage() {
           setDevolucaoSaldos([]);
           setDevolucaoMovimentacaoId(null);
           setDevolucaoTermos([]);
+          setDevolucaoAvarias([]);
         }}
       />
     </FardamentosShell>

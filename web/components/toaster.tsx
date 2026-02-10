@@ -63,6 +63,16 @@ export const toaster = {
   erro: (title: string, error?: unknown, options?: ToastOptions) => {
     const e = parseApiError(error);
 
+    if (e.code === "FORBIDDEN") {
+      showToast(
+        "warning",
+        "Acesso negado",
+        "Você não tem permissão para realizar esta ação.",
+        options,
+      );
+      return;
+    }
+
     showToast("error", title || e.title, e.message, options);
   },
 

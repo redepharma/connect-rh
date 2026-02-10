@@ -19,6 +19,7 @@ import type { Unidade, Variacao } from "../types/fardamentos.types";
 import { Genero } from "../types/genero.enums";
 import type { TermoInfo } from "../types/termos.types";
 import type { ColaboradorSaldo } from "../types/saldos.types";
+import type { Avaria, CreateAvariaItem } from "../types/avarias.types";
 
 type ColaboradorOption = { id: string; nome: string };
 
@@ -47,9 +48,12 @@ type DevolucaoWizardProps = {
   onUnidadesScroll?: () => void;
   termos: TermoInfo[];
   termosLoading: boolean;
+  avariasRegistradas: Avaria[];
+  avariasLoading: boolean;
   onGerarTermo: () => void;
   onAbrirTermo: (id: string) => void;
   onBaixarTermo: (id: string) => void;
+  onRegistrarAvarias: (itens: CreateAvariaItem[]) => void;
   onAdvance: () => Promise<void>;
   onConfirm: () => void;
   onForceConfirm: () => void;
@@ -81,9 +85,12 @@ export function MovimentacaoDevolucaoWizard({
   onUnidadesScroll,
   termos,
   termosLoading,
+  avariasRegistradas,
+  avariasLoading,
   onGerarTermo,
   onAbrirTermo,
   onBaixarTermo,
+  onRegistrarAvarias,
   onAdvance,
   onConfirm,
   onForceConfirm,
@@ -110,6 +117,15 @@ export function MovimentacaoDevolucaoWizard({
       ),
     },
   ];
+
+  const handleRegistrarAvarias = async () => {
+    const values = await form.validateFields(["avarias"]);
+    const itens = (values.avarias ?? []).filter(
+      (item: CreateAvariaItem | undefined) =>
+        item?.variacaoId && Number(item?.quantidade ?? 0) > 0,
+    );
+    onRegistrarAvarias(itens);
+  };
 
   return (
     <Modal
@@ -349,6 +365,80 @@ export function MovimentacaoDevolucaoWizard({
               loading={termosLoading}
               pagination={false}
             />
+            <Divider className="my-4">Avarias</Divider>
+            <Typography.Text className="text-xs text-neutral-500">
+              Itens avariados nao retornam ao estoque utilizavel.
+            </Typography.Text>
+            <div className="mt-3 space-y-3">
+              <Form.List name="avarias" initialValue={[]}>
+                {(fields, { add, remove }) => (
+                  <div className="space-y-2">
+                    {fields.map((field) => (
+                      <Space key={field.key} align="baseline">
+                        <Form.Item
+                          name={[field.name, "variacaoId"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Select
+                            placeholder="Variacao"
+                            options={variacaoOptionsDevolucao}
+                            style={{ minWidth: 220 }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name={[field.name, "quantidade"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Input type="number" min={1} />
+                        </Form.Item>
+                        <Form.Item name={[field.name, "descricao"]}>
+                          <Input placeholder="Descricao (opcional)" />
+                        </Form.Item>
+                        <Button onClick={() => remove(field.name)}>
+                          Remover
+                        </Button>
+                      </Space>
+                    ))}
+                    <Button onClick={() => add()}>Adicionar avaria</Button>
+                  </div>
+                )}
+              </Form.List>
+              <div>
+                <Button
+                  type="primary"
+                  onClick={handleRegistrarAvarias}
+                  loading={avariasLoading}
+                >
+                  Registrar avarias
+                </Button>
+              </div>
+              {avariasRegistradas.length ? (
+                <Table
+                  size="small"
+                  rowKey="id"
+                  pagination={false}
+                  dataSource={avariasRegistradas}
+                  columns={[
+                    {
+                      title: "Variacao",
+                      dataIndex: "variacaoLabel",
+                      key: "variacaoLabel",
+                    },
+                    {
+                      title: "Quantidade",
+                      dataIndex: "quantidade",
+                      key: "quantidade",
+                    },
+                    {
+                      title: "Descricao",
+                      dataIndex: "descricao",
+                      key: "descricao",
+                      render: (value: string | null) => value ?? "-",
+                    },
+                  ]}
+                />
+              ) : null}
+            </div>
           </>
         )}
       </Form>

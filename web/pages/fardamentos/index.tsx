@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button, Card, Input, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
@@ -6,14 +7,18 @@ import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/types/fardamentos.constants";
 import type { EstoqueItem } from "@/modules/fardamentos/types/fardamentos.types";
 import {
+  fetchAvarias,
   fetchEstoque,
   fetchMetrics,
   mapEstoqueToUi,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
+import type { Avaria } from "@/modules/fardamentos/types/avarias.types";
 
 export default function FardamentosOverview() {
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
+  const [avarias, setAvarias] = useState<Avaria[]>([]);
+  const [totalAvarias, setTotalAvarias] = useState(0);
   const [metrics, setMetrics] = useState<{
     unidades: number;
     tipos: number;
@@ -30,15 +35,20 @@ export default function FardamentosOverview() {
     const load = async () => {
       setLoading(true);
       try {
-        const [metricsResult, estoqueResult] = await Promise.all([
+        const [metricsResult, estoqueResult, avariasResult] = await Promise.all(
+          [
           fetchMetrics(),
           fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
-        ]);
+          fetchAvarias({ offset: 0, limit: 5 }),
+          ],
+        );
 
         if (!active) return;
 
         setMetrics(metricsResult);
         setEstoque(mapEstoqueToUi(estoqueResult.data));
+        setAvarias(avariasResult.data);
+        setTotalAvarias(avariasResult.total);
       } catch (err) {
         if (active) toaster.erro("Erro ao carregar dados do painel", err);
       } finally {
@@ -66,8 +76,12 @@ export default function FardamentosOverview() {
       description="Visao geral do catalogo e estoque do modulo de fardamentos."
       actions={
         <Space>
-          <Button type="primary">Novo tipo</Button>
-          <Button>Nova unidade</Button>
+          <Link href="/fardamentos/tipos">
+            <Button type="primary">Novo tipo</Button>
+          </Link>
+          <Link href="/fardamentos/unidades">
+            <Button>Nova unidade</Button>
+          </Link>
         </Space>
       }
     >
@@ -100,7 +114,11 @@ export default function FardamentosOverview() {
         <SectionCard
           title="Alertas de estoque"
           description="Itens abaixo do limite minimo configurado."
-          actions={<Button type="primary">Ver estoque</Button>}
+          actions={
+            <Link href="/fardamentos/estoque">
+              <Button type="primary">Ver estoque</Button>
+            </Link>
+          }
         >
           <div className="space-y-3">
             {lowStockItems.length === 0 ? (
@@ -116,18 +134,21 @@ export default function FardamentosOverview() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Typography.Text className="text-sm font-medium text-neutral-900">
+                      <Typography.Text className="block text-sm font-medium text-neutral-900">
                         {item.tipoNome}
                       </Typography.Text>
-                      <Typography.Text className="text-xs text-neutral-500">
-                        {item.variacaoLabel} - {item.unidade}
+                      <Typography.Text className="block text-xs text-neutral-500">
+                        {item.variacaoLabel}
+                      </Typography.Text>
+                      <Typography.Text className="block text-xs text-neutral-500">
+                        Unidade: {item.unidade}
                       </Typography.Text>
                     </div>
                     <div className="text-right">
-                      <Typography.Text className="text-sm font-semibold text-red-600">
+                      <Typography.Text className="block text-sm font-semibold text-red-600">
                         {item.total - item.reservado} disponiveis
                       </Typography.Text>
-                      <Typography.Text className="text-xs text-neutral-500">
+                      <Typography.Text className="block text-xs text-neutral-500">
                         {item.reservado} reservados
                       </Typography.Text>
                     </div>
@@ -145,21 +166,81 @@ export default function FardamentosOverview() {
         >
           <div className="flex flex-col gap-2">
             {[
-              { label: "Cadastro de unidades" },
-              { label: "Cadastro de tipos" },
-              { label: "Variacoes e tamanhos" },
-              { label: "Controle de estoque" },
+              { label: "Cadastro de unidades", href: "/fardamentos/unidades" },
+              { label: "Cadastro de tipos", href: "/fardamentos/tipos" },
+              { label: "Variacoes e tamanhos", href: "/fardamentos/variacoes" },
+              { label: "Controle de estoque", href: "/fardamentos/estoque" },
+              { label: "Movimentacoes", href: "/fardamentos/movimentacoes" },
             ].map((item) => (
-              <div
+              <Link
                 key={item.label}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700"
+                href={item.href}
+                className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
               >
                 {item.label}
-              </div>
+              </Link>
             ))}
           </div>
         </SectionCard>
       </section>
+
+      <SectionCard
+        title="Avarias recentes"
+        description="Ultimos registros de avarias e ajustes realizados."
+        actions={
+          <Link href="/fardamentos/avarias">
+            <Button type="primary">Ver avarias</Button>
+          </Link>
+        }
+      >
+        <div className="flex flex-wrap gap-3">
+          <Card className="border border-neutral-200/70" size="small">
+            <Typography.Text className="block text-xs text-neutral-500">
+              Total de avarias
+            </Typography.Text>
+            <Typography.Text className="text-lg font-semibold text-neutral-900">
+              {loading ? "--" : totalAvarias}
+            </Typography.Text>
+          </Card>
+        </div>
+        <div className="mt-4 space-y-3">
+          {avarias.length === 0 ? (
+            <Typography.Text className="text-sm text-neutral-500">
+              Nenhuma avaria registrada ainda.
+            </Typography.Text>
+          ) : (
+            avarias.map((avaria) => (
+              <Card
+                key={avaria.id}
+                className="border border-neutral-200/70"
+                size="small"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <Typography.Text className="block text-sm font-medium text-neutral-900">
+                      {avaria.colaboradorNome}
+                    </Typography.Text>
+                    <Typography.Text className="block text-xs text-neutral-500">
+                      {avaria.tipoNome} - {avaria.variacaoLabel}
+                    </Typography.Text>
+                    <Typography.Text className="block text-xs text-neutral-500">
+                      Unidade: {avaria.unidadeNome}
+                    </Typography.Text>
+                  </div>
+                  <div className="text-right">
+                    <Typography.Text className="block text-sm font-semibold text-neutral-900">
+                      {avaria.quantidade} itens
+                    </Typography.Text>
+                    <Typography.Text className="block text-xs text-neutral-500">
+                      {avaria.createdAt}
+                    </Typography.Text>
+                  </div>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+      </SectionCard>
     </FardamentosShell>
   );
 }

@@ -13,6 +13,8 @@ const navItems = [
   { href: "/fardamentos/estoque", label: "Estoque" },
   { href: "/fardamentos/movimentacoes", label: "Movimentacoes" },
   { href: "/fardamentos/historico", label: "Historico" },
+  { href: "/fardamentos/avarias", label: "Avarias" },
+  { href: "/fardamentos/saldos", label: "Saldos" },
 ];
 
 type Props = {

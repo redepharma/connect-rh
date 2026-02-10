@@ -23,11 +23,14 @@ import { TiposController } from './controllers/tipos.controller';
 import { VariacoesController } from './controllers/variacoes.controller';
 import { EstoqueController } from './controllers/estoque.controller';
 import { MovimentacoesController } from './controllers/movimentacoes.controller';
+import { AvariasController } from './controllers/avarias.controller';
 import { TermosController } from './controllers/termos.controller';
 import { MetricasController } from './controllers/metricas.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     TypeOrmModule.forFeature(
       [
         UnidadeEntity,
@@ -50,6 +53,7 @@ import { MetricasController } from './controllers/metricas.controller';
     VariacoesController,
     EstoqueController,
     MovimentacoesController,
+    AvariasController,
     TermosController,
     MetricasController,
   ],

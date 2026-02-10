@@ -13,6 +13,10 @@ import type {
 } from "@/modules/fardamentos/types/termos.types";
 import { Genero } from "@/modules/fardamentos/types/genero.enums";
 import type { ColaboradorSaldo } from "@/modules/fardamentos/types/saldos.types";
+import type {
+  Avaria,
+  CreateAvariaItem,
+} from "@/modules/fardamentos/types/avarias.types";
 import {
   MovimentacaoStatus,
   MovimentacaoTipo,
@@ -299,6 +303,31 @@ export const fetchColaboradorSaldos = (colaboradorId: string) =>
       method: "GET",
     },
   );
+
+export const fetchAvarias = (filters?: {
+  q?: string;
+  movimentacaoId?: string;
+  unidadeId?: string;
+  colaboradorId?: string;
+  tipoId?: string;
+  startDate?: string;
+  endDate?: string;
+  offset?: number;
+  limit?: number;
+}) =>
+  apiClient<PaginatedResponse<Avaria>>("/fardamentos/avarias", {
+    method: "GET",
+    query: filters,
+  });
+
+export const registrarAvarias = (
+  movimentacaoId: string,
+  itens: CreateAvariaItem[],
+) =>
+  apiClient<Avaria[]>(`/fardamentos/movimentacoes/${movimentacaoId}/avarias`, {
+    method: "POST",
+    body: { itens },
+  });
 
 export const mapMovimentacoesToUi = (data: MovimentacaoResponse[]) =>
   data.map((mov) => ({

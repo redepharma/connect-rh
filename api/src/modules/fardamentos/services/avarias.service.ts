@@ -10,6 +10,7 @@ import { MovimentacaoEntity } from '../entities/movimentacao.entity';
 import { EstoqueEntity } from '../entities/estoque.entity';
 import { VariacaoEntity } from '../entities/variacao.entity';
 import type { CreateAvariasDto } from '../dto/avarias/create-avarias.dto';
+import type { ListAvariasDto } from '../dto/avarias/list-avarias.dto';
 import type { RequestUser } from '../../auth/types/auth.types';
 
 @Injectable()
@@ -111,5 +112,84 @@ export class AvariasService {
       descricao: avaria.descricao,
       createdAt: avaria.createdAt,
     }));
+  }
+
+  async listarAvarias(query: ListAvariasDto) {
+    const qb = this.avariasRepo
+      .createQueryBuilder('avaria')
+      .leftJoinAndSelect('avaria.movimentacao', 'movimentacao')
+      .leftJoinAndSelect('movimentacao.unidade', 'unidade')
+      .leftJoinAndSelect('avaria.variacao', 'variacao')
+      .leftJoinAndSelect('variacao.tipo', 'tipo');
+
+    if (query.movimentacaoId) {
+      qb.andWhere('movimentacao.id = :movimentacaoId', {
+        movimentacaoId: query.movimentacaoId,
+      });
+    }
+
+    if (query.unidadeId) {
+      qb.andWhere('unidade.id = :unidadeId', { unidadeId: query.unidadeId });
+    }
+
+    if (query.colaboradorId) {
+      qb.andWhere('movimentacao.colaboradorId = :colaboradorId', {
+        colaboradorId: query.colaboradorId,
+      });
+    }
+
+    if (query.tipoId) {
+      qb.andWhere('tipo.id = :tipoId', { tipoId: query.tipoId });
+    }
+
+    if (query.startDate) {
+      qb.andWhere('avaria.createdAt >= :startDate', {
+        startDate: query.startDate,
+      });
+    }
+
+    if (query.endDate) {
+      qb.andWhere('avaria.createdAt <= :endDate', {
+        endDate: query.endDate,
+      });
+    }
+
+    if (query.q) {
+      qb.andWhere(
+        '(movimentacao.colaboradorNome LIKE :q OR movimentacao.colaboradorId LIKE :q OR tipo.nome LIKE :q OR unidade.nome LIKE :q OR variacao.tamanho LIKE :q OR variacao.genero LIKE :q OR avaria.descricao LIKE :q)',
+        { q: `%${query.q}%` },
+      );
+    }
+
+    qb.orderBy('avaria.createdAt', 'DESC');
+
+    const offset = Math.max(0, query.offset ?? 0);
+    const limit = Math.min(10, Math.max(1, query.limit ?? 10));
+    const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();
+    const { totalQuantidade } = (await qb
+      .clone()
+      .select('COALESCE(SUM(avaria.quantidade), 0)', 'totalQuantidade')
+      .getRawOne()) as { totalQuantidade: string | number };
+
+    return {
+      data: data.map((avaria) => ({
+        id: avaria.id,
+        movimentacaoId: avaria.movimentacao?.id ?? '',
+        colaboradorId: avaria.movimentacao?.colaboradorId ?? '',
+        colaboradorNome: avaria.movimentacao?.colaboradorNome ?? '',
+        unidadeNome: avaria.movimentacao?.unidade?.nome ?? '-',
+        tipoNome: avaria.variacao?.tipo?.nome ?? '-',
+        variacaoLabel: `${avaria.variacao?.tamanho ?? '-'} - ${
+          avaria.variacao?.genero ?? '-'
+        }`,
+        quantidade: avaria.quantidade,
+        descricao: avaria.descricao,
+        createdAt: avaria.createdAt,
+      })),
+      total,
+      totalQuantidade: Number(totalQuantidade ?? 0),
+      offset,
+      limit,
+    };
   }
 }
