@@ -174,93 +174,95 @@ export function MovimentacaoEntregaWizard({
           </>
         ) : step === 1 ? (
           <>
-            <Form.List
-              name="itens"
-              initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
-            >
-              {(fields, { add, remove }) => (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <Select
-                      placeholder="Unidade"
-                      allowClear
-                      value={entregaUnidadeId ?? undefined}
-                      onChange={(value) => setEntregaUnidadeId(value ?? null)}
-                      onPopupScroll={(event) => {
-                        if (!onUnidadesScroll) return;
-                        const target = event.target as HTMLDivElement;
-                        if (
-                          target.scrollTop + target.offsetHeight >=
-                          target.scrollHeight - 16
-                        ) {
-                          onUnidadesScroll();
-                        }
-                      }}
-                      loading={unidadesLoading}
-                      options={unidades.map((u) => ({
-                        label: u.nome,
-                        value: u.id,
-                      }))}
-                      style={{ minWidth: 180 }}
-                    />
-                    <Select
-                      placeholder="Genero"
-                      allowClear
-                      value={entregaGenero ?? undefined}
-                      onChange={(value) => setEntregaGenero(value ?? null)}
-                      options={[
-                        { label: "Masculino", value: Genero.MASCULINO },
-                        { label: "Feminino", value: Genero.FEMININO },
-                        { label: "Unissex", value: Genero.UNISSEX },
-                      ]}
-                      style={{ minWidth: 160 }}
-                    />
-                    <Select
-                      placeholder="Tamanho"
-                      allowClear
-                      value={entregaTamanho ?? undefined}
-                      onChange={(value) => setEntregaTamanho(value ?? null)}
-                      options={tamanhosDisponiveis.map((tamanho) => ({
-                        label: tamanho,
-                        value: tamanho,
-                      }))}
-                      style={{ minWidth: 140 }}
-                    />
+            <div className="flex flex-wrap gap-2">
+              <Select
+                placeholder="Unidade"
+                allowClear
+                value={entregaUnidadeId ?? undefined}
+                onChange={(value) => setEntregaUnidadeId(value ?? null)}
+                onPopupScroll={(event) => {
+                  if (!onUnidadesScroll) return;
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    onUnidadesScroll();
+                  }
+                }}
+                loading={unidadesLoading}
+                options={unidades.map((u) => ({
+                  label: u.nome,
+                  value: u.id,
+                }))}
+                style={{ minWidth: 180 }}
+              />
+              <Select
+                placeholder="Genero"
+                allowClear
+                value={entregaGenero ?? undefined}
+                onChange={(value) => setEntregaGenero(value ?? null)}
+                options={[
+                  { label: "Masculino", value: Genero.MASCULINO },
+                  { label: "Feminino", value: Genero.FEMININO },
+                  { label: "Unissex", value: Genero.UNISSEX },
+                ]}
+                style={{ minWidth: 160 }}
+              />
+              <Select
+                placeholder="Tamanho"
+                allowClear
+                value={entregaTamanho ?? undefined}
+                onChange={(value) => setEntregaTamanho(value ?? null)}
+                options={tamanhosDisponiveis.map((tamanho) => ({
+                  label: tamanho,
+                  value: tamanho,
+                }))}
+                style={{ minWidth: 140 }}
+              />
+            </div>
+            <Divider className="my-4">Itens</Divider>
+            <div className="max-h-56 overflow-y-auto pr-1">
+              <Form.List
+                name="itens"
+                initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
+              >
+                {(fields, { add, remove }) => (
+                  <div className="space-y-2">
+                    {fields.map((field) => (
+                      <Space key={field.key} align="baseline">
+                        <Form.Item
+                          name={[field.name, "variacaoId"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Select
+                            placeholder="Variacao"
+                            options={variacaoOptionsFiltradas}
+                            style={{ minWidth: 200 }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name={[field.name, "quantidade"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Input type="number" min={1} />
+                        </Form.Item>
+                        <Button onClick={() => remove(field.name)}>
+                          Remover
+                        </Button>
+                      </Space>
+                    ))}
+                    <Button onClick={() => add()}>Adicionar item</Button>
                   </div>
-                  <Divider className="my-4">Itens</Divider>
-                  {fields.map((field) => (
-                    <Space key={field.key} align="baseline">
-                      <Form.Item
-                        name={[field.name, "variacaoId"]}
-                        rules={[{ required: true }]}
-                      >
-                        <Select
-                          placeholder="Variacao"
-                          options={variacaoOptionsFiltradas}
-                          style={{ minWidth: 200 }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name={[field.name, "quantidade"]}
-                        rules={[{ required: true }]}
-                      >
-                        <Input type="number" min={1} />
-                      </Form.Item>
-                      <Button onClick={() => remove(field.name)}>
-                        Remover
-                      </Button>
-                    </Space>
-                  ))}
-                  <Button onClick={() => add()}>Adicionar item</Button>
-                </div>
-              )}
-            </Form.List>
+                )}
+              </Form.List>
+            </div>
             <div className="mt-4">
               <Divider className="my-4">Estoque</Divider>
               <div className="text-xs text-neutral-500">
                 Estoque disponivel por variacao (total e reservado)
               </div>
-              <div className="mt-2">
+              <div className="mt-2 max-h-64 overflow-y-auto pr-1">
                 {estoqueEntrega.length === 0 ? (
                   <Alert
                     type="info"

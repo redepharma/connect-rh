@@ -242,76 +242,80 @@ export function MovimentacaoDevolucaoWizard({
               />
             </div>
             <Divider className="my-4">Em posse</Divider>
-            <Table
-              size="small"
-              pagination={false}
-              rowKey="id"
-              loading={saldosLoading}
-              dataSource={saldos}
-              columns={[
-                {
-                  title: "Variacao",
-                  dataIndex: "variacaoId",
-                  key: "variacaoId",
-                  render: (_: string, record: ColaboradorSaldo) =>
-                    `${record.tipoNome} - ${record.tamanho} - ${record.genero}`,
-                },
-                {
-                  title: "Quantidade",
-                  dataIndex: "quantidade",
-                  key: "quantidade",
-                },
-              ]}
-            />
+            <div className="max-h-44 overflow-y-auto pr-1">
+              <Table
+                size="small"
+                pagination={false}
+                rowKey="id"
+                loading={saldosLoading}
+                dataSource={saldos}
+                columns={[
+                  {
+                    title: "Variacao",
+                    dataIndex: "variacaoId",
+                    key: "variacaoId",
+                    render: (_: string, record: ColaboradorSaldo) =>
+                      `${record.tipoNome} - ${record.tamanho} - ${record.genero}`,
+                  },
+                  {
+                    title: "Quantidade",
+                    dataIndex: "quantidade",
+                    key: "quantidade",
+                  },
+                ]}
+              />
+            </div>
             <Divider className="my-4">Itens</Divider>
-            <Form.List
-              name="itens"
-              initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
-            >
-              {(fields, { add, remove }) => (
-                <div className="space-y-2">
-                  {fields.map((field) => (
-                    <Space key={field.key} align="baseline">
-                      <Form.Item
-                        name={[field.name, "variacaoId"]}
-                        rules={[{ required: true }]}
-                      >
-                        <Select
-                          placeholder="Variacao"
-                          options={variacaoOptionsDevolucao}
-                          style={{ minWidth: 200 }}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        name={[field.name, "quantidade"]}
-                        rules={[{ required: true }]}
-                      >
-                        <Input type="number" min={1} />
-                      </Form.Item>
-                      <Button onClick={() => remove(field.name)}>
-                        Remover
-                      </Button>
-                    </Space>
-                  ))}
-                  <Button onClick={() => add()}>Adicionar item</Button>
-                  {devolucaoUnidadeId && devolucaoEstoqueIds.length === 0 ? (
-                    <Alert
-                      className="mt-2"
-                      type="info"
-                      message="Nenhum estoque encontrado para a unidade selecionada."
-                      showIcon
-                    />
-                  ) : variacoesDevolucaoFiltradas.length === 0 ? (
-                    <Alert
-                      className="mt-2"
-                      type="info"
-                      message="Nenhum item encontrado para os filtros selecionados."
-                      showIcon
-                    />
-                  ) : null}
-                </div>
-              )}
-            </Form.List>
+            <div className="max-h-56 overflow-y-auto pr-1">
+              <Form.List
+                name="itens"
+                initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
+              >
+                {(fields, { add, remove }) => (
+                  <div className="space-y-2">
+                    {fields.map((field) => (
+                      <Space key={field.key} align="baseline">
+                        <Form.Item
+                          name={[field.name, "variacaoId"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Select
+                            placeholder="Variacao"
+                            options={variacaoOptionsDevolucao}
+                            style={{ minWidth: 200 }}
+                          />
+                        </Form.Item>
+                        <Form.Item
+                          name={[field.name, "quantidade"]}
+                          rules={[{ required: true }]}
+                        >
+                          <Input type="number" min={1} />
+                        </Form.Item>
+                        <Button onClick={() => remove(field.name)}>
+                          Remover
+                        </Button>
+                      </Space>
+                    ))}
+                    <Button onClick={() => add()}>Adicionar item</Button>
+                    {devolucaoUnidadeId && devolucaoEstoqueIds.length === 0 ? (
+                      <Alert
+                        className="mt-2"
+                        type="info"
+                        message="Nenhum estoque encontrado para a unidade selecionada."
+                        showIcon
+                      />
+                    ) : variacoesDevolucaoFiltradas.length === 0 ? (
+                      <Alert
+                        className="mt-2"
+                        type="info"
+                        message="Nenhum item encontrado para os filtros selecionados."
+                        showIcon
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </Form.List>
+            </div>
           </>
         ) : (
           <>
