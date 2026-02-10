@@ -7,7 +7,12 @@ import type {
   Variacao,
   VariacaoResponse,
 } from "@/modules/fardamentos/types/fardamentos.types";
+import type {
+  TermoDownload,
+  TermoInfo,
+} from "@/modules/fardamentos/types/termos.types";
 import { Genero } from "@/modules/fardamentos/types/genero.enums";
+import type { ColaboradorSaldo } from "@/modules/fardamentos/types/saldos.types";
 import {
   MovimentacaoStatus,
   MovimentacaoTipo,
@@ -204,6 +209,7 @@ export const createDevolucao = (payload: {
   colaboradorId: string;
   colaboradorNome: string;
   itens: { variacaoId: string; quantidade: number }[];
+  force?: boolean;
 }) =>
   apiClient<MovimentacaoResponse>("/fardamentos/movimentacoes/devolucao", {
     method: "POST",
@@ -218,6 +224,35 @@ export const updateMovimentacaoStatus = (
     method: "PATCH",
     body: { status },
   });
+
+export const gerarTermo = (movimentacaoId: string) =>
+  apiClient<{ id: string; versao: number; createdAt: string }>(
+    `/fardamentos/movimentacoes/${movimentacaoId}/termos`,
+    {
+      method: "POST",
+    },
+  );
+
+export const listarTermos = (movimentacaoId: string) =>
+  apiClient<TermoInfo[]>(
+    `/fardamentos/movimentacoes/${movimentacaoId}/termos`,
+    {
+      method: "GET",
+    },
+  );
+
+export const baixarTermo = (termoId: string) =>
+  apiClient<TermoDownload>(`/fardamentos/termos/${termoId}`, {
+    method: "GET",
+  });
+
+export const fetchColaboradorSaldos = (colaboradorId: string) =>
+  apiClient<ColaboradorSaldo[]>(
+    `/fardamentos/movimentacoes/colaboradores/${colaboradorId}/saldos`,
+    {
+      method: "GET",
+    },
+  );
 
 export const mapMovimentacoesToUi = (data: MovimentacaoResponse[]) =>
   data.map((mov) => ({

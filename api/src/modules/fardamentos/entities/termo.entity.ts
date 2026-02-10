@@ -7,31 +7,31 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MovimentacaoEntity } from './movimentacao.entity';
-import type { MovimentacaoStatus } from './movimentacao.entity';
+import type { MovimentacaoTipo } from './movimentacao.entity';
 
-@Entity('movimentacao_eventos')
-export class MovimentacaoEventoEntity {
+@Entity('termos_fardamento')
+export class TermoEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => MovimentacaoEntity, (mov) => mov.eventos, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => MovimentacaoEntity, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'movimentacao_id' })
   movimentacao: MovimentacaoEntity;
 
+  @Column({ type: 'int' })
+  versao: number;
+
   @Column({ type: 'varchar', length: 20 })
-  status: MovimentacaoStatus;
+  tipo: MovimentacaoTipo;
+
+  @Column({ name: 'pdf_base64', type: 'longtext' })
+  pdfBase64: string;
 
   @Column({ name: 'usuario_id', type: 'varchar', length: 120 })
   usuarioId: string;
 
   @Column({ name: 'usuario_nome', type: 'varchar', length: 160 })
   usuarioNome: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  descricao?: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

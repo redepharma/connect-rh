@@ -11,10 +11,12 @@ import {
   Space,
   Steps,
   Table,
+  Typography,
 } from "antd";
 import type { FormInstance } from "antd/es/form";
 import type { Variacao, Unidade } from "../types/fardamentos.types";
 import { Genero } from "../types/genero.enums";
+import type { TermoInfo } from "../types/termos.types";
 
 type ColaboradorOption = { id: string; nome: string };
 
@@ -36,9 +38,15 @@ type EntregaWizardProps = {
   setEntregaGenero: (value: Genero | null) => void;
   entregaTamanho: string | null;
   setEntregaTamanho: (value: string | null) => void;
+  termos: TermoInfo[];
+  termosLoading: boolean;
+  onGerarTermo: () => void;
+  onAbrirTermo: (id: string) => void;
+  onBaixarTermo: (id: string) => void;
   onAdvance: () => Promise<void>;
   onConfirm: () => void;
   onCancel: () => void;
+  onColaboradorSelect: (colaborador: ColaboradorOption | null) => void;
 };
 
 export function MovimentacaoEntregaWizard({
@@ -59,10 +67,37 @@ export function MovimentacaoEntregaWizard({
   setEntregaGenero,
   entregaTamanho,
   setEntregaTamanho,
+  termos,
+  termosLoading,
+  onGerarTermo,
+  onAbrirTermo,
+  onBaixarTermo,
   onAdvance,
   onConfirm,
   onCancel,
+  onColaboradorSelect,
 }: EntregaWizardProps) {
+  const termoColumns = [
+    { title: "Versao", dataIndex: "versao", key: "versao" },
+    { title: "Tipo", dataIndex: "tipo", key: "tipo" },
+    { title: "Gerado por", dataIndex: "usuarioNome", key: "usuarioNome" },
+    { title: "Criado em", dataIndex: "createdAt", key: "createdAt" },
+    {
+      title: "Acoes",
+      key: "acoes",
+      render: (_: unknown, record: TermoInfo) => (
+        <Space>
+          <Button size="small" onClick={() => onAbrirTermo(record.id)}>
+            Abrir
+          </Button>
+          <Button size="small" onClick={() => onBaixarTermo(record.id)}>
+            Baixar
+          </Button>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <Modal
       open={open}
@@ -71,17 +106,19 @@ export function MovimentacaoEntregaWizard({
       footer={
         <Space>
           <Button onClick={onCancel}>Cancelar</Button>
-          {step > 0 ? (
+          {step > 0 && step < 2 ? (
             <Button onClick={() => setStep(step - 1)}>Voltar</Button>
           ) : null}
           {step < 1 ? (
             <Button type="primary" onClick={onAdvance}>
               Avancar
             </Button>
-          ) : (
+          ) : step === 1 ? (
             <Button type="primary" loading={saving} onClick={onConfirm}>
               Confirmar entrega
             </Button>
+          ) : (
+            <Button onClick={onCancel}>Fechar</Button>
           )}
         </Space>
       }
@@ -89,7 +126,11 @@ export function MovimentacaoEntregaWizard({
       <Steps
         current={step}
         size="small"
-        items={[{ title: "Colaborador" }, { title: "Itens e estoque" }]}
+        items={[
+          { title: "Colaborador" },
+          { title: "Itens e estoque" },
+          { title: "Termo" },
+        ]}
       />
       <Form layout="vertical" form={form} className="mt-4">
         {step === 0 ? (
@@ -111,6 +152,7 @@ export function MovimentacaoEntregaWizard({
                     (colab) => colab.id === value,
                   );
                   form.setFieldValue("colaboradorNome", selected?.nome ?? "");
+                  onColaboradorSelect(selected ?? null);
                 }}
                 filterOption={(input, option) =>
                   String(option?.label ?? "")
@@ -126,7 +168,7 @@ export function MovimentacaoEntregaWizard({
               <Input />
             </Form.Item>
           </>
-        ) : (
+        ) : step === 1 ? (
           <>
             <Form.List
               name="itens"
@@ -137,6 +179,7 @@ export function MovimentacaoEntregaWizard({
                   <div className="flex flex-wrap gap-2">
                     <Select
                       placeholder="Unidade"
+                      allowClear
                       value={entregaUnidadeId ?? undefined}
                       onChange={(value) => setEntregaUnidadeId(value ?? null)}
                       options={unidades.map((u) => ({
@@ -280,6 +323,39 @@ export function MovimentacaoEntregaWizard({
                 )}
               </div>
             </div>
+          </>
+        ) : (
+          <>
+            <Typography.Text className="text-sm text-neutral-600">
+              Registro criado. Gere um termo para esta entrega.
+            </Typography.Text>
+            <div className="mt-4">
+              <Button
+                type="primary"
+                loading={termosLoading}
+                onClick={onGerarTermo}
+              >
+                Gerar termo
+              </Button>
+              <Button
+                className="ml-2"
+                onClick={() => {
+                  const ultimo = termos[0];
+                  if (ultimo) onAbrirTermo(ultimo.id);
+                }}
+                disabled={!termos.length}
+              >
+                Abrir ultimo termo
+              </Button>
+            </div>
+            <Table
+              className="mt-4"
+              rowKey="id"
+              columns={termoColumns}
+              dataSource={termos}
+              loading={termosLoading}
+              pagination={false}
+            />
           </>
         )}
       </Form>

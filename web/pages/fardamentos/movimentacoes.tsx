@@ -9,7 +9,7 @@ import {
   Table,
   Tag,
 } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { MovimentacaoEntregaWizard } from "@/modules/fardamentos/components/movimentacao-entrega-wizard";
@@ -19,6 +19,7 @@ import type {
   Variacao,
 } from "@/modules/fardamentos/types/fardamentos.types";
 import type { Movimentacao } from "@/modules/fardamentos/types/movimentacoes.types";
+import type { TermoInfo } from "@/modules/fardamentos/types/termos.types";
 import {
   MovimentacaoStatus,
   MovimentacaoTipo,
@@ -27,10 +28,14 @@ import { Genero } from "@/modules/fardamentos/types/genero.enums";
 import {
   createDevolucao,
   createEntrega,
+  baixarTermo,
+  fetchColaboradorSaldos,
   fetchEstoque,
   fetchMovimentacoes,
   fetchUnidades,
   fetchVariacoes,
+  gerarTermo,
+  listarTermos,
   mapEstoqueToUi,
   mapMovimentacoesToUi,
   mapVariacoesToUi,
@@ -67,6 +72,20 @@ export default function MovimentacoesPage() {
   const [saving, setSaving] = useState(false);
   const [stepEntrega, setStepEntrega] = useState(0);
   const [stepDevolucao, setStepDevolucao] = useState(0);
+  const [entregaColaborador, setEntregaColaborador] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
+  const [devolucaoColaborador, setDevolucaoColaborador] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
+  const entregaColaboradorRef = useRef<{ id: string; nome: string } | null>(
+    null,
+  );
+  const devolucaoColaboradorRef = useRef<{ id: string; nome: string } | null>(
+    null,
+  );
   const [formEntrega] = Form.useForm();
   const [formDevolucao] = Form.useForm();
   const [estoqueEntrega, setEstoqueEntrega] = useState<
@@ -75,12 +94,37 @@ export default function MovimentacoesPage() {
   const [entregaUnidadeId, setEntregaUnidadeId] = useState<string | null>(null);
   const [entregaGenero, setEntregaGenero] = useState<Genero | null>(null);
   const [entregaTamanho, setEntregaTamanho] = useState<string | null>(null);
+  const entregaEstoqueIds = useMemo(
+    () => estoqueEntrega.map((item) => item.variacaoId),
+    [estoqueEntrega],
+  );
   const [devolucaoUnidadeId, setDevolucaoUnidadeId] = useState<string | null>(
     null,
   );
   const [devolucaoGenero, setDevolucaoGenero] = useState<Genero | null>(null);
   const [devolucaoTamanho, setDevolucaoTamanho] = useState<string | null>(null);
   const [devolucaoEstoqueIds, setDevolucaoEstoqueIds] = useState<string[]>([]);
+  const [devolucaoSaldos, setDevolucaoSaldos] = useState<
+    {
+      id: string;
+      variacaoId: string;
+      tipoNome: string;
+      tamanho: string;
+      genero: Genero;
+      quantidade: number;
+    }[]
+  >([]);
+  const [devolucaoSaldosLoading, setDevolucaoSaldosLoading] = useState(false);
+  const [entregaMovimentacaoId, setEntregaMovimentacaoId] = useState<
+    string | null
+  >(null);
+  const [devolucaoMovimentacaoId, setDevolucaoMovimentacaoId] = useState<
+    string | null
+  >(null);
+  const [entregaTermos, setEntregaTermos] = useState<TermoInfo[]>([]);
+  const [devolucaoTermos, setDevolucaoTermos] = useState<TermoInfo[]>([]);
+  const [entregaTermosLoading, setEntregaTermosLoading] = useState(false);
+  const [devolucaoTermosLoading, setDevolucaoTermosLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -104,6 +148,19 @@ export default function MovimentacoesPage() {
     void load();
   }, [filters]);
 
+  useEffect(() => {
+    const colaboradorId = devolucaoColaborador?.id;
+    if (!colaboradorId) {
+      setDevolucaoSaldos([]);
+      return;
+    }
+    setDevolucaoSaldosLoading(true);
+    fetchColaboradorSaldos(colaboradorId)
+      .then((result) => setDevolucaoSaldos(result))
+      .catch((err) => toaster.erro("Erro ao carregar itens em posse", err))
+      .finally(() => setDevolucaoSaldosLoading(false));
+  }, [devolucaoColaborador]);
+
   const variacaoOptions = useMemo(
     () =>
       variacoes.map((v) => ({
@@ -121,11 +178,14 @@ export default function MovimentacoesPage() {
 
   const variacoesFiltradas = useMemo(() => {
     return variacoes.filter((v) => {
+      if (entregaEstoqueIds.length > 0 && !entregaEstoqueIds.includes(v.id)) {
+        return false;
+      }
       if (entregaGenero && v.genero !== entregaGenero) return false;
       if (entregaTamanho && v.tamanho !== entregaTamanho) return false;
       return true;
     });
-  }, [variacoes, entregaGenero, entregaTamanho]);
+  }, [variacoes, entregaGenero, entregaTamanho, entregaEstoqueIds]);
 
   const variacaoOptionsFiltradas = useMemo(
     () =>
@@ -137,6 +197,7 @@ export default function MovimentacoesPage() {
   );
 
   const variacoesDevolucaoFiltradas = useMemo(() => {
+    const saldoIds = devolucaoSaldos.map((saldo) => saldo.variacaoId);
     return variacoes.filter((v) => {
       if (
         devolucaoEstoqueIds.length > 0 &&
@@ -144,11 +205,20 @@ export default function MovimentacoesPage() {
       ) {
         return false;
       }
+      if (saldoIds.length > 0 && !saldoIds.includes(v.id)) {
+        return false;
+      }
       if (devolucaoGenero && v.genero !== devolucaoGenero) return false;
       if (devolucaoTamanho && v.tamanho !== devolucaoTamanho) return false;
       return true;
     });
-  }, [variacoes, devolucaoGenero, devolucaoTamanho, devolucaoEstoqueIds]);
+  }, [
+    variacoes,
+    devolucaoGenero,
+    devolucaoTamanho,
+    devolucaoEstoqueIds,
+    devolucaoSaldos,
+  ]);
 
   const variacaoOptionsDevolucao = useMemo(
     () =>
@@ -159,16 +229,41 @@ export default function MovimentacoesPage() {
     [variacoesDevolucaoFiltradas],
   );
 
+  const saldosDevolucaoFiltrados = useMemo(() => {
+    return devolucaoSaldos.filter((saldo) => {
+      if (devolucaoGenero && saldo.genero !== devolucaoGenero) return false;
+      if (devolucaoTamanho && saldo.tamanho !== devolucaoTamanho) return false;
+      return true;
+    });
+  }, [devolucaoSaldos, devolucaoGenero, devolucaoTamanho]);
+
   const handleEntrega = async () => {
     try {
       const values = await formEntrega.validateFields();
-      if (!values.unidadeId) {
-        const defaultUnidadeId = unidades[0]?.id;
-        if (defaultUnidadeId) {
-          formEntrega.setFieldValue("unidadeId", defaultUnidadeId);
-          values.unidadeId = defaultUnidadeId;
-        }
+      const storedColaboradorId =
+        entregaColaborador?.id ??
+        entregaColaboradorRef.current?.id ??
+        formEntrega.getFieldValue("colaboradorId") ??
+        values.colaboradorId;
+      const storedColaboradorNome =
+        entregaColaborador?.nome ??
+        entregaColaboradorRef.current?.nome ??
+        formEntrega.getFieldValue("colaboradorNome") ??
+        values.colaboradorNome;
+      values.colaboradorId = String(storedColaboradorId ?? "");
+      values.colaboradorNome = String(storedColaboradorNome ?? "");
+      if (!values.colaboradorId) {
+        toaster.alerta(
+          "Colaborador obrigatorio",
+          "Selecione um colaborador para continuar.",
+        );
+        return;
       }
+      const unidadeId =
+        entregaUnidadeId ??
+        formEntrega.getFieldValue("unidadeId") ??
+        values.unidadeId;
+      values.unidadeId = unidadeId;
       if (!values.unidadeId) {
         toaster.alerta(
           "Unidade indisponivel",
@@ -176,10 +271,18 @@ export default function MovimentacoesPage() {
         );
         return;
       }
-      const estoqueResult = await fetchEstoque({
-        unidadeId: values.unidadeId,
-      });
-      const estoqueUi = mapEstoqueToUi(estoqueResult);
+      const estoqueUi =
+        estoqueEntrega.length > 0
+          ? estoqueEntrega.map((item) => ({
+              variacaoId: item.variacaoId,
+              total: item.total,
+              reservado: item.reservado,
+            }))
+          : mapEstoqueToUi(
+              await fetchEstoque({
+                unidadeId: values.unidadeId,
+              }),
+            );
       const estoqueMap = new Map(
         estoqueUi.map((item) => [item.variacaoId, item]),
       );
@@ -197,15 +300,11 @@ export default function MovimentacoesPage() {
         return;
       }
       setSaving(true);
-      await createEntrega(values);
+      const created = await createEntrega(values);
       toaster.sucesso("Entrega registrada", "A movimentacao foi criada.");
-      setOpenEntrega(false);
-      setStepEntrega(0);
-      formEntrega.resetFields();
-      setEstoqueEntrega([]);
-      setEntregaUnidadeId(null);
-      setEntregaGenero(null);
-      setEntregaTamanho(null);
+      setEntregaMovimentacaoId(created.id);
+      setStepEntrega(2);
+      setEntregaTermos([]);
       await load();
     } catch (err) {
       toaster.erro("Erro ao registrar entrega", err);
@@ -214,9 +313,28 @@ export default function MovimentacoesPage() {
     }
   };
 
-  const handleDevolucao = async () => {
+  const handleDevolucao = async (force = false) => {
     try {
       const values = await formDevolucao.validateFields();
+      const storedColaboradorId =
+        devolucaoColaborador?.id ??
+        devolucaoColaboradorRef.current?.id ??
+        formDevolucao.getFieldValue("colaboradorId") ??
+        values.colaboradorId;
+      const storedColaboradorNome =
+        devolucaoColaborador?.nome ??
+        devolucaoColaboradorRef.current?.nome ??
+        formDevolucao.getFieldValue("colaboradorNome") ??
+        values.colaboradorNome;
+      values.colaboradorId = String(storedColaboradorId ?? "");
+      values.colaboradorNome = String(storedColaboradorNome ?? "");
+      if (!values.colaboradorId) {
+        toaster.alerta(
+          "Colaborador obrigatorio",
+          "Selecione um colaborador para continuar.",
+        );
+        return;
+      }
       if (!values.unidadeId) {
         const defaultUnidadeId = devolucaoUnidadeId ?? unidades[0]?.id;
         if (defaultUnidadeId) {
@@ -232,20 +350,80 @@ export default function MovimentacoesPage() {
         return;
       }
       setSaving(true);
-      await createDevolucao(values);
+      const created = await createDevolucao({ ...values, force });
       toaster.sucesso("Devolucao registrada", "A movimentacao foi criada.");
-      setOpenDevolucao(false);
-      setStepDevolucao(0);
-      formDevolucao.resetFields();
-      setDevolucaoUnidadeId(null);
-      setDevolucaoGenero(null);
-      setDevolucaoTamanho(null);
-      setDevolucaoEstoqueIds([]);
+      if (force) {
+        toaster.alerta(
+          "Devolucao forcada",
+          "A devolucao foi registrada ignorando o saldo em posse.",
+        );
+      }
+      setDevolucaoMovimentacaoId(created.id);
+      setStepDevolucao(2);
+      setDevolucaoTermos([]);
       await load();
     } catch (err) {
       toaster.erro("Erro ao registrar devolucao", err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGerarTermoEntrega = async () => {
+    if (!entregaMovimentacaoId) return;
+    setEntregaTermosLoading(true);
+    try {
+      await gerarTermo(entregaMovimentacaoId);
+      const result = await listarTermos(entregaMovimentacaoId);
+      setEntregaTermos(result);
+      toaster.sucesso("Termo gerado", "Uma nova versao foi criada.");
+    } catch (err) {
+      toaster.erro("Erro ao gerar termo", err);
+    } finally {
+      setEntregaTermosLoading(false);
+    }
+  };
+
+  const handleGerarTermoDevolucao = async () => {
+    if (!devolucaoMovimentacaoId) return;
+    setDevolucaoTermosLoading(true);
+    try {
+      await gerarTermo(devolucaoMovimentacaoId);
+      const result = await listarTermos(devolucaoMovimentacaoId);
+      setDevolucaoTermos(result);
+      toaster.sucesso("Termo gerado", "Uma nova versao foi criada.");
+    } catch (err) {
+      toaster.erro("Erro ao gerar termo", err);
+    } finally {
+      setDevolucaoTermosLoading(false);
+    }
+  };
+
+  const handleAbrirTermo = async (termoId: string) => {
+    try {
+      const termo = await baixarTermo(termoId);
+      const blob = b64toBlob(termo.pdfBase64, "application/pdf");
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener,noreferrer");
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      toaster.erro("Erro ao abrir termo", err);
+    }
+  };
+
+  const handleBaixarTermo = async (termoId: string) => {
+    try {
+      const termo = await baixarTermo(termoId);
+      const blob = b64toBlob(termo.pdfBase64, "application/pdf");
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = termo.filename || "termo.pdf";
+      document.body.appendChild(link);
+      link.click();
+      URL.revokeObjectURL(link.href);
+      link.remove();
+    } catch (err) {
+      toaster.erro("Erro ao baixar termo", err);
     }
   };
 
@@ -454,15 +632,36 @@ export default function MovimentacoesPage() {
                 reservado: item.reservado,
               })),
             );
+          } else {
+            setEstoqueEntrega([]);
           }
         }}
         entregaGenero={entregaGenero}
         setEntregaGenero={setEntregaGenero}
         entregaTamanho={entregaTamanho}
         setEntregaTamanho={setEntregaTamanho}
+        termos={entregaTermos}
+        termosLoading={entregaTermosLoading}
+        onGerarTermo={handleGerarTermoEntrega}
+        onAbrirTermo={handleAbrirTermo}
+        onBaixarTermo={handleBaixarTermo}
+        onColaboradorSelect={(colaborador) => {
+          setEntregaColaborador(colaborador);
+          entregaColaboradorRef.current = colaborador;
+        }}
         onAdvance={async () => {
           try {
             await formEntrega.validateFields(["colaboradorId"]);
+            const colabId = formEntrega.getFieldValue("colaboradorId");
+            const colabNome = formEntrega.getFieldValue("colaboradorNome");
+            if (colabId) {
+              const stored = {
+                id: String(colabId),
+                nome: String(colabNome ?? ""),
+              };
+              setEntregaColaborador(stored);
+              entregaColaboradorRef.current = stored;
+            }
             const currentUnidadeId =
               entregaUnidadeId ??
               formEntrega.getFieldValue("unidadeId") ??
@@ -501,9 +700,13 @@ export default function MovimentacoesPage() {
           setStepEntrega(0);
           setEstoqueEntrega([]);
           formEntrega.resetFields();
+          setEntregaColaborador(null);
+          entregaColaboradorRef.current = null;
           setEntregaUnidadeId(null);
           setEntregaGenero(null);
           setEntregaTamanho(null);
+          setEntregaMovimentacaoId(null);
+          setEntregaTermos([]);
         }}
       />
 
@@ -538,9 +741,30 @@ export default function MovimentacoesPage() {
         setDevolucaoTamanho={setDevolucaoTamanho}
         devolucaoEstoqueIds={devolucaoEstoqueIds}
         variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
+        saldos={saldosDevolucaoFiltrados}
+        saldosLoading={devolucaoSaldosLoading}
+        termos={devolucaoTermos}
+        termosLoading={devolucaoTermosLoading}
+        onGerarTermo={handleGerarTermoDevolucao}
+        onAbrirTermo={handleAbrirTermo}
+        onBaixarTermo={handleBaixarTermo}
+        onColaboradorSelect={(colaborador) => {
+          setDevolucaoColaborador(colaborador);
+          devolucaoColaboradorRef.current = colaborador;
+        }}
         onAdvance={async () => {
           try {
             await formDevolucao.validateFields(["colaboradorId"]);
+            const colabId = formDevolucao.getFieldValue("colaboradorId");
+            const colabNome = formDevolucao.getFieldValue("colaboradorNome");
+            if (colabId) {
+              const stored = {
+                id: String(colabId),
+                nome: String(colabNome ?? ""),
+              };
+              setDevolucaoColaborador(stored);
+              devolucaoColaboradorRef.current = stored;
+            }
             if (devolucaoUnidadeId) {
               formDevolucao.setFieldValue("unidadeId", devolucaoUnidadeId);
             }
@@ -551,16 +775,38 @@ export default function MovimentacoesPage() {
           }
         }}
         onConfirm={() => void handleDevolucao()}
+        onForceConfirm={() => void handleDevolucao(true)}
         onCancel={() => {
           setOpenDevolucao(false);
           setStepDevolucao(0);
           formDevolucao.resetFields();
+          setDevolucaoColaborador(null);
+          devolucaoColaboradorRef.current = null;
           setDevolucaoUnidadeId(null);
           setDevolucaoGenero(null);
           setDevolucaoTamanho(null);
           setDevolucaoEstoqueIds([]);
+          setDevolucaoSaldos([]);
+          setDevolucaoMovimentacaoId(null);
+          setDevolucaoTermos([]);
         }}
       />
     </FardamentosShell>
   );
+}
+
+function b64toBlob(b64Data: string, contentType: string) {
+  const byteCharacters = atob(b64Data);
+  const byteArrays = [];
+
+  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+    const slice = byteCharacters.slice(offset, offset + 512);
+    const byteNumbers = new Array(slice.length);
+    for (let i = 0; i < slice.length; i++) {
+      byteNumbers[i] = slice.charCodeAt(i);
+    }
+    byteArrays.push(new Uint8Array(byteNumbers));
+  }
+
+  return new Blob(byteArrays, { type: contentType });
 }

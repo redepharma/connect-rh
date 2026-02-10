@@ -110,18 +110,59 @@ export class MovimentacoesService {
     return mov;
   }
 
+  async listarSaldoColaborador(colaboradorId: string) {
+    const movimentos = await this.movRepository.find({
+      where: { colaboradorId, status: 'CONCLUIDO' },
+      relations: ['itens', 'itens.variacao', 'itens.variacao.tipo'],
+      order: { createdAt: 'DESC' },
+    });
+
+    const saldoMap = new Map<
+      string,
+      {
+        variacaoId: string;
+        tipoNome: string;
+        tamanho: string;
+        genero: string;
+        quantidade: number;
+      }
+    >();
+
+    for (const mov of movimentos) {
+      const fator = mov.tipo === 'ENTREGA' ? 1 : -1;
+      for (const item of mov.itens ?? []) {
+        const variacaoId = item.variacao?.id ?? '';
+        if (!variacaoId) continue;
+        const atual = saldoMap.get(variacaoId) ?? {
+          variacaoId,
+          tipoNome: item.variacao?.tipo?.nome ?? '-',
+          tamanho: item.variacao?.tamanho ?? '-',
+          genero: item.variacao?.genero ?? '-',
+          quantidade: 0,
+        };
+        atual.quantidade += fator * item.quantidade;
+        saldoMap.set(variacaoId, atual);
+      }
+    }
+
+    return Array.from(saldoMap.values()).filter(
+      (saldo) => saldo.quantidade > 0,
+    );
+  }
+
   async createEntrega(dto: CreateEntregaDto, user: RequestUser) {
     return this.createMovimentacao('ENTREGA', dto, user);
   }
 
   async createDevolucao(dto: CreateDevolucaoDto, user: RequestUser) {
-    return this.createMovimentacao('DEVOLUCAO', dto, user);
+    return this.createMovimentacao('DEVOLUCAO', dto, user, dto.force === true);
   }
 
   private async createMovimentacao(
     tipo: MovimentacaoTipo,
     dto: CreateEntregaDto | CreateDevolucaoDto,
     user: RequestUser,
+    forceDevolucao = false,
   ) {
     const unidade = await this.unidadeRepository.findOne({
       where: { id: dto.unidadeId },
@@ -174,7 +215,7 @@ export class MovimentacoesService {
         }
       }
 
-      if (tipo === 'DEVOLUCAO') {
+      if (tipo === 'DEVOLUCAO' && !forceDevolucao) {
         for (const item of savedItens) {
           await this.validarSaldo(
             manager,
@@ -192,6 +233,10 @@ export class MovimentacoesService {
           status: 'SEPARADO',
           usuarioId: user.id,
           usuarioNome: user.nome,
+          descricao:
+            tipo === 'DEVOLUCAO' && forceDevolucao
+              ? 'Devolucao forcada (saldo ignorado)'
+              : undefined,
         }),
       );
     });
@@ -395,13 +440,17 @@ export class MovimentacoesService {
     variacaoId: string,
     quantidade: number,
   ) {
-    const saldo = await manager.findOne(ColaboradorSaldoEntity, {
+    let saldo = await manager.findOne(ColaboradorSaldoEntity, {
       where: { colaboradorId, variacao: { id: variacaoId } },
       relations: ['variacao'],
     });
 
     if (!saldo) {
-      throw new BadRequestException('Saldo do colaborador nao encontrado');
+      saldo = manager.create(ColaboradorSaldoEntity, {
+        colaboradorId,
+        variacao: { id: variacaoId } as VariacaoEntity,
+        quantidade: 0,
+      });
     }
 
     saldo.quantidade = Math.max(0, saldo.quantidade - quantidade);
@@ -420,7 +469,9 @@ export class MovimentacoesService {
     });
 
     if (!saldo || saldo.quantidade < quantidade) {
-      throw new BadRequestException('Saldo insuficiente para devolucao');
+      throw new BadRequestException(
+        'Colaborador não possui registro de entrega deste item para poder realizar a devolucao',
+      );
     }
   }
 }

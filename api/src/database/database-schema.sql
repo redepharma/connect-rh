@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS movimentacao_eventos (
   status VARCHAR(20) NOT NULL,
   usuario_id VARCHAR(120) NOT NULL,
   usuario_nome VARCHAR(160) NOT NULL,
+  descricao VARCHAR(255) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT pk_movimentacao_eventos PRIMARY KEY (id),
   CONSTRAINT fk_mov_evento_mov FOREIGN KEY (movimentacao_id) REFERENCES movimentacoes_fardamento(id) ON DELETE CASCADE
@@ -130,6 +131,39 @@ CREATE TABLE IF NOT EXISTS movimentacao_eventos (
 
 CREATE INDEX idx_mov_evento_status ON movimentacao_eventos (status);
 CREATE INDEX idx_mov_evento_created_at ON movimentacao_eventos (created_at);
+
+CREATE TABLE IF NOT EXISTS termos_fardamento (
+  id CHAR(36) NOT NULL,
+  movimentacao_id CHAR(36) NOT NULL,
+  versao INT NOT NULL,
+  tipo VARCHAR(20) NOT NULL,
+  pdf_base64 LONGTEXT NOT NULL,
+  usuario_id VARCHAR(120) NOT NULL,
+  usuario_nome VARCHAR(160) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pk_termos_fardamento PRIMARY KEY (id),
+  CONSTRAINT fk_termo_mov FOREIGN KEY (movimentacao_id) REFERENCES movimentacoes_fardamento(id) ON DELETE CASCADE,
+  CONSTRAINT uq_termo_mov_versao UNIQUE (movimentacao_id, versao)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_termo_mov ON termos_fardamento (movimentacao_id);
+
+CREATE TABLE IF NOT EXISTS avarias_fardamento (
+  id CHAR(36) NOT NULL,
+  movimentacao_id CHAR(36) NOT NULL,
+  variacao_id CHAR(36) NOT NULL,
+  quantidade INT NOT NULL,
+  descricao VARCHAR(255) NULL,
+  usuario_id VARCHAR(120) NOT NULL,
+  usuario_nome VARCHAR(160) NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT pk_avarias_fardamento PRIMARY KEY (id),
+  CONSTRAINT fk_avaria_mov FOREIGN KEY (movimentacao_id) REFERENCES movimentacoes_fardamento(id) ON DELETE CASCADE,
+  CONSTRAINT fk_avaria_variacao FOREIGN KEY (variacao_id) REFERENCES variacoes_fardamento(id) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_avaria_mov ON avarias_fardamento (movimentacao_id);
+CREATE INDEX idx_avaria_variacao ON avarias_fardamento (variacao_id);
 
 CREATE TABLE IF NOT EXISTS colaborador_saldos (
   id CHAR(36) NOT NULL,

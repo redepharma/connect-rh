@@ -8,16 +8,21 @@ import { MovimentacaoEntity } from './entities/movimentacao.entity';
 import { MovimentacaoItemEntity } from './entities/movimentacao-item.entity';
 import { MovimentacaoEventoEntity } from './entities/movimentacao-evento.entity';
 import { ColaboradorSaldoEntity } from './entities/colaborador-saldo.entity';
+import { TermoEntity } from './entities/termo.entity';
+import { AvariaEntity } from './entities/avaria.entity';
 import { UnidadesService } from './services/unidades.service';
 import { TiposService } from './services/tipos.service';
 import { VariacoesService } from './services/variacoes.service';
 import { EstoqueService } from './services/estoque.service';
 import { MovimentacoesService } from './services/movimentacoes.service';
+import { TermosService } from './services/termos.service';
+import { AvariasService } from './services/avarias.service';
 import { UnidadesController } from './controllers/unidades.controller';
 import { TiposController } from './controllers/tipos.controller';
 import { VariacoesController } from './controllers/variacoes.controller';
 import { EstoqueController } from './controllers/estoque.controller';
 import { MovimentacoesController } from './controllers/movimentacoes.controller';
+import { TermosController } from './controllers/termos.controller';
 
 @Module({
   imports: [
@@ -31,6 +36,8 @@ import { MovimentacoesController } from './controllers/movimentacoes.controller'
         MovimentacaoItemEntity,
         MovimentacaoEventoEntity,
         ColaboradorSaldoEntity,
+        TermoEntity,
+        AvariaEntity,
       ],
       'primary',
     ),
@@ -41,6 +48,7 @@ import { MovimentacoesController } from './controllers/movimentacoes.controller'
     VariacoesController,
     EstoqueController,
     MovimentacoesController,
+    TermosController,
   ],
   providers: [
     UnidadesService,
@@ -48,6 +56,8 @@ import { MovimentacoesController } from './controllers/movimentacoes.controller'
     VariacoesService,
     EstoqueService,
     MovimentacoesService,
+    TermosService,
+    AvariasService,
   ],
 })
 export class FardamentosModule {}

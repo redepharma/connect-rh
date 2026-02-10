@@ -7,31 +7,32 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { MovimentacaoEntity } from './movimentacao.entity';
-import type { MovimentacaoStatus } from './movimentacao.entity';
+import { VariacaoEntity } from './variacao.entity';
 
-@Entity('movimentacao_eventos')
-export class MovimentacaoEventoEntity {
+@Entity('avarias_fardamento')
+export class AvariaEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => MovimentacaoEntity, (mov) => mov.eventos, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => MovimentacaoEntity, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'movimentacao_id' })
   movimentacao: MovimentacaoEntity;
 
-  @Column({ type: 'varchar', length: 20 })
-  status: MovimentacaoStatus;
+  @ManyToOne(() => VariacaoEntity, { nullable: false })
+  @JoinColumn({ name: 'variacao_id' })
+  variacao: VariacaoEntity;
+
+  @Column({ type: 'int' })
+  quantidade: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  descricao: string | null;
 
   @Column({ name: 'usuario_id', type: 'varchar', length: 120 })
   usuarioId: string;
 
   @Column({ name: 'usuario_nome', type: 'varchar', length: 160 })
   usuarioNome: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  descricao?: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

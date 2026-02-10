@@ -6,6 +6,7 @@ import { ConfigProvider, ThemeConfig, theme as antdTheme } from "antd";
 import ptBR from "antd/locale/pt_BR";
 import type { AppProps } from "next/app";
 import { AuthProvider } from "@/context/auth-context";
+import { ToasterProvider } from "@/components/toaster";
 
 const themeLight: ThemeConfig = {
   token: {
@@ -52,7 +53,9 @@ export default function App(props: AppProps) {
     <AntdRegistry>
       <ThemeProvider>
         <AuthProvider>
-          <ThemeAppWrapper {...props} />
+          <ToasterProvider>
+            <ThemeAppWrapper {...props} />
+          </ToasterProvider>
         </AuthProvider>
       </ThemeProvider>
     </AntdRegistry>

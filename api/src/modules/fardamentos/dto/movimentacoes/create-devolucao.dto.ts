@@ -1,4 +1,13 @@
-import { ArrayMinSize, IsArray, IsInt, IsString, IsUUID, Min } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class DevolucaoItemDto {
   @IsUUID('all')
@@ -18,6 +27,10 @@ export class CreateDevolucaoDto {
 
   @IsString()
   colaboradorNome: string;
+
+  @IsOptional()
+  @IsBoolean()
+  force?: boolean;
 
   @IsArray()
   @ArrayMinSize(1)

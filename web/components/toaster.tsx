@@ -1,11 +1,31 @@
 "use client";
 
 import { Button, notification } from "antd";
+import type { NotificationInstance } from "antd/es/notification/interface";
 import { parseApiError } from "@/shared/error-handlers/api-errors";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
 
 type ToastType = "success" | "error" | "warning" | "info";
 type ToastAction = { label: string; onClick: () => void };
 type ToastOptions = { action?: ToastAction; duration?: number };
+
+let notificationApi: NotificationInstance | null = null;
+
+export function ToasterProvider({ children }: { children: ReactNode }) {
+  const [api, contextHolder] = notification.useNotification();
+
+  useEffect(() => {
+    notificationApi = api;
+  }, [api]);
+
+  return (
+    <>
+      {contextHolder}
+      {children}
+    </>
+  );
+}
 
 function showToast(
   type: ToastType,
@@ -13,17 +33,26 @@ function showToast(
   description?: string,
   options?: ToastOptions,
 ) {
-  notification.open({
-    message: title,
+  if (!notificationApi) return;
+
+  notificationApi.open({
+    title,
     description,
     type,
     placement: "topRight",
     duration: options?.duration ?? 3,
-    btn: options?.action ? (
-      <Button type="link" size="small" onClick={options.action.onClick}>
-        {options.action.label}
-      </Button>
-    ) : undefined,
+    actions: options?.action
+      ? [
+          <Button
+            key="action"
+            type="link"
+            size="small"
+            onClick={options.action.onClick}
+          >
+            {options.action.label}
+          </Button>,
+        ]
+      : undefined,
   });
 }
 
