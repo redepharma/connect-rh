@@ -7,6 +7,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { DepartmentGuard } from './modules/auth/guards/department.guard';
 import { DatabaseModule } from './database/database.module';
 import { FardamentosModule } from './modules/fardamentos/fardamentos.module';
+import { InstitucionalModule } from './modules/institucional/institucional.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { FardamentosModule } from './modules/fardamentos/fardamentos.module';
     DatabaseModule,
     AuthModule,
     FardamentosModule,
+    InstitucionalModule,
   ],
   controllers: [AppController],
   providers: [AppService, JwtAuthGuard, DepartmentGuard],
