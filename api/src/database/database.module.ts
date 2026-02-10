@@ -1,4 +1,4 @@
-import { ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module } from '@nestjs/common';
 import path from 'node:path';
@@ -8,7 +8,7 @@ import path from 'node:path';
     // Conexão (fardamentos / mysql)
     TypeOrmModule.forRootAsync({
       name: 'primary',
-      imports: [],
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         name: 'primary',
@@ -31,10 +31,10 @@ import path from 'node:path';
         synchronize: false,
       }),
     }),
-
+    // Conexão (Institucional / postgresql)
     TypeOrmModule.forRootAsync({
       name: 'institucional',
-      imports: [],
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         name: 'institucional',
@@ -59,23 +59,6 @@ import path from 'node:path';
         synchronize: false,
       }),
     }),
-
-    // TypeOrmModule.forRootAsync({
-    //   name: 'secondary',
-    //   imports: [ConfigModule],
-    //   inject: [ConfigService],
-    //   useFactory: (config: ConfigService) => ({
-    //     name: 'secondary',
-    //     type: 'mysql',
-    //     host: config.get<string>('DB2_HOST', 'localhost'),
-    //     port: Number(config.get<string>('DB2_PORT', '3306')),
-    //     username: config.get<string>('DB2_USER', 'root'),
-    //     password: config.get<string>('DB2_PASSWORD', 'root'),
-    //     database: config.get<string>('DB2_NAME', 'connect_rh_aux'),
-    //     entities: [],
-    //     synchronize: false,
-    //   }),
-    // }),
   ],
 })
 export class DatabaseModule {}
