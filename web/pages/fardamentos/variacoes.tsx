@@ -1,10 +1,10 @@
-import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { VariacaoTable } from "@/modules/fardamentos/components/variacao-table";
+import { VariacaoModal } from "@/modules/fardamentos/components/variacao-modal";
 import type { Variacao } from "@/modules/fardamentos/types/fardamentos.types";
-import { Genero } from "@/modules/fardamentos/types/genero.enums";
 import {
   createVariacao,
   deleteVariacao,
@@ -133,7 +133,10 @@ export default function VariacoesPage() {
               value={tipoId}
               allowClear
               onChange={(value) => setTipoId(value)}
-              options={tipos.map((tipo) => ({ label: tipo.nome, value: tipo.id }))}
+              options={tipos.map((tipo) => ({
+                label: tipo.nome,
+                value: tipo.id,
+              }))}
               style={{ minWidth: 200 }}
             />
           </Space>
@@ -146,35 +149,15 @@ export default function VariacoesPage() {
           onDelete={(variacao) => void handleDelete(variacao)}
         />
       </SectionCard>
-      <Modal
+      <VariacaoModal
         open={open}
+        editing={editing}
+        form={form}
+        saving={saving}
+        tipos={tipos}
         onCancel={() => setOpen(false)}
         onOk={handleSave}
-        confirmLoading={saving}
-        title={editing ? "Editar variacao" : "Nova variacao"}
-      >
-        <Form layout="vertical" form={form}>
-          <Form.Item name="tipoId" label="Tipo" rules={[{ required: true }]}>
-            <Select
-              placeholder="Selecione o tipo"
-              options={tipos.map((tipo) => ({ label: tipo.nome, value: tipo.id }))}
-            />
-          </Form.Item>
-          <Form.Item name="tamanho" label="Tamanho" rules={[{ required: true }]}>
-            <Input placeholder="Ex: P, M, G, 40" />
-          </Form.Item>
-          <Form.Item name="genero" label="Genero" rules={[{ required: true }]}>
-            <Select
-              placeholder="Selecione o genero"
-              options={[
-                { label: "Masculino", value: Genero.MASCULINO },
-                { label: "Feminino", value: Genero.FEMININO },
-                { label: "Unissex", value: Genero.UNISSEX },
-              ]}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </FardamentosShell>
   );
 }

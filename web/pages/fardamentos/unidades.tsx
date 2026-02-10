@@ -1,10 +1,16 @@
-import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { UnitTable } from "@/modules/fardamentos/components/unit-table";
+import { UnidadeModal } from "@/modules/fardamentos/components/unidade-modal";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
-import { createUnidade, deleteUnidade, fetchUnidades, updateUnidade } from "@/modules/fardamentos/services/fardamentos.service";
+import {
+  createUnidade,
+  deleteUnidade,
+  fetchUnidades,
+  updateUnidade,
+} from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 
 export default function UnidadesPage() {
@@ -120,30 +126,14 @@ export default function UnidadesPage() {
           onDelete={(unit) => void handleDelete(unit)}
         />
       </SectionCard>
-      <Modal
+      <UnidadeModal
         open={open}
+        editing={editing}
+        form={form}
+        saving={saving}
         onCancel={() => setOpen(false)}
         onOk={handleSave}
-        confirmLoading={saving}
-        title={editing ? "Editar unidade" : "Nova unidade"}
-      >
-        <Form layout="vertical" form={form}>
-          <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
-            <Input placeholder="Ex: Loja Centro" />
-          </Form.Item>
-          <Form.Item name="descricao" label="Descricao">
-            <Input placeholder="Descricao opcional" />
-          </Form.Item>
-          <Form.Item name="ativo" label="Status" initialValue={true}>
-            <Select
-              options={[
-                { label: "Ativa", value: true },
-                { label: "Inativa", value: false },
-              ]}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </FardamentosShell>
   );
 }

@@ -1,10 +1,18 @@
-import { Button, Form, Input, Modal, Popconfirm, Select, Space } from "antd";
+import { Button, Form, Input, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { TipoTable } from "@/modules/fardamentos/components/tipo-table";
+import { TipoModal } from "@/modules/fardamentos/components/tipo-modal";
 import type { TipoFardamento } from "@/modules/fardamentos/types/fardamentos.types";
-import { createTipo, deleteTipo, fetchTipos, fetchUnidades, mapTiposToUi, updateTipo } from "@/modules/fardamentos/services/fardamentos.service";
+import {
+  createTipo,
+  deleteTipo,
+  fetchTipos,
+  fetchUnidades,
+  mapTiposToUi,
+  updateTipo,
+} from "@/modules/fardamentos/services/fardamentos.service";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
 
@@ -124,7 +132,10 @@ export default function TiposPage() {
               value={unidadeId}
               allowClear
               onChange={(value) => setUnidadeId(value)}
-              options={unidades.map((unit) => ({ label: unit.nome, value: unit.id }))}
+              options={unidades.map((unit) => ({
+                label: unit.nome,
+                value: unit.id,
+              }))}
               style={{ minWidth: 180 }}
             />
           </Space>
@@ -137,30 +148,15 @@ export default function TiposPage() {
           onDelete={(tipo) => void handleDelete(tipo)}
         />
       </SectionCard>
-      <Modal
+      <TipoModal
         open={open}
+        editing={editing}
+        form={form}
+        saving={saving}
+        unidades={unidades}
         onCancel={() => setOpen(false)}
         onOk={handleSave}
-        confirmLoading={saving}
-        title={editing ? "Editar tipo" : "Novo tipo"}
-      >
-        <Form layout="vertical" form={form}>
-          <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
-            <Input placeholder="Ex: Camisa Polo" />
-          </Form.Item>
-          <Form.Item
-            name="unidadesIds"
-            label="Unidades"
-            rules={[{ required: true, message: "Selecione ao menos uma unidade" }]}
-          >
-            <Select
-              mode="multiple"
-              placeholder="Selecione unidades"
-              options={unidades.map((unit) => ({ label: unit.nome, value: unit.id }))}
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      />
     </FardamentosShell>
   );
 }

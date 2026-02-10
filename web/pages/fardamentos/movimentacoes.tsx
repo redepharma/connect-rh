@@ -1,21 +1,19 @@
 import {
-  Alert,
   Button,
   DatePicker,
   Form,
   Input,
-  Modal,
   Popconfirm,
   Select,
   Space,
-  Steps,
-  Divider,
   Table,
   Tag,
 } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
+import { MovimentacaoEntregaWizard } from "@/modules/fardamentos/components/movimentacao-entrega-wizard";
+import { MovimentacaoDevolucaoWizard } from "@/modules/fardamentos/components/movimentacao-devolucao-wizard";
 import type {
   Unidade,
   Variacao,
@@ -428,8 +426,76 @@ export default function MovimentacoesPage() {
         />
       </SectionCard>
 
-      <Modal
+      <MovimentacaoEntregaWizard
         open={openEntrega}
+        saving={saving}
+        step={stepEntrega}
+        setStep={setStepEntrega}
+        form={formEntrega}
+        colaboradores={colaboradoresMock}
+        unidades={unidades}
+        variacoes={variacoes}
+        variacaoOptionsFiltradas={variacaoOptionsFiltradas}
+        tamanhosDisponiveis={tamanhosDisponiveis}
+        estoqueEntrega={estoqueEntrega}
+        entregaUnidadeId={entregaUnidadeId}
+        setEntregaUnidadeId={async (value) => {
+          setEntregaUnidadeId(value);
+          formEntrega.setFieldValue("unidadeId", value ?? undefined);
+          if (value) {
+            const estoqueResult = await fetchEstoque({
+              unidadeId: value,
+            });
+            const estoqueUi = mapEstoqueToUi(estoqueResult);
+            setEstoqueEntrega(
+              estoqueUi.map((item) => ({
+                variacaoId: item.variacaoId,
+                total: item.total,
+                reservado: item.reservado,
+              })),
+            );
+          }
+        }}
+        entregaGenero={entregaGenero}
+        setEntregaGenero={setEntregaGenero}
+        entregaTamanho={entregaTamanho}
+        setEntregaTamanho={setEntregaTamanho}
+        onAdvance={async () => {
+          try {
+            await formEntrega.validateFields(["colaboradorId"]);
+            const currentUnidadeId =
+              entregaUnidadeId ??
+              formEntrega.getFieldValue("unidadeId") ??
+              unidades[0]?.id;
+            if (!currentUnidadeId) {
+              toaster.alerta(
+                "Unidade indisponivel",
+                "Nenhuma unidade disponivel para carregar o estoque.",
+              );
+              return;
+            }
+            if (currentUnidadeId) {
+              formEntrega.setFieldValue("unidadeId", currentUnidadeId);
+              setEntregaUnidadeId(currentUnidadeId);
+              const estoqueResult = await fetchEstoque({
+                unidadeId: currentUnidadeId,
+              });
+              const estoqueUi = mapEstoqueToUi(estoqueResult);
+              setEstoqueEntrega(
+                estoqueUi.map((item) => ({
+                  variacaoId: item.variacaoId,
+                  total: item.total,
+                  reservado: item.reservado,
+                })),
+              );
+            }
+            setStepEntrega(1);
+          } catch (err) {
+            const apiError = parseApiError(err);
+            toaster.alerta("Verifique os dados", apiError.message);
+          }
+        }}
+        onConfirm={() => void handleEntrega()}
         onCancel={() => {
           setOpenEntrega(false);
           setStepEntrega(0);
@@ -439,302 +505,52 @@ export default function MovimentacoesPage() {
           setEntregaGenero(null);
           setEntregaTamanho(null);
         }}
-        title="Nova entrega"
-        footer={
-          <Space>
-            <Button
-              onClick={() => {
-                setOpenEntrega(false);
-                setStepEntrega(0);
-                setEstoqueEntrega([]);
-                formEntrega.resetFields();
-              }}
-            >
-              Cancelar
-            </Button>
-            {stepEntrega > 0 ? (
-              <Button onClick={() => setStepEntrega(stepEntrega - 1)}>
-                Voltar
-              </Button>
-            ) : null}
-            {stepEntrega < 1 ? (
-              <Button
-                type="primary"
-                onClick={async () => {
-                  try {
-                    await formEntrega.validateFields(["colaboradorId"]);
-                    const currentUnidadeId =
-                      entregaUnidadeId ??
-                      formEntrega.getFieldValue("unidadeId") ??
-                      unidades[0]?.id;
-                    if (!currentUnidadeId) {
-                      toaster.alerta(
-                        "Unidade indisponivel",
-                        "Nenhuma unidade disponivel para carregar o estoque.",
-                      );
-                      return;
-                    }
-                    if (currentUnidadeId) {
-                      formEntrega.setFieldValue("unidadeId", currentUnidadeId);
-                      setEntregaUnidadeId(currentUnidadeId);
-                      const estoqueResult = await fetchEstoque({
-                        unidadeId: currentUnidadeId,
-                      });
-                      const estoqueUi = mapEstoqueToUi(estoqueResult);
-                      setEstoqueEntrega(
-                        estoqueUi.map((item) => ({
-                          variacaoId: item.variacaoId,
-                          total: item.total,
-                          reservado: item.reservado,
-                        })),
-                      );
-                    }
-                    setStepEntrega(1);
-                  } catch (err) {
-                    const apiError = parseApiError(err);
-                    toaster.alerta("Verifique os dados", apiError.message);
-                  }
-                }}
-              >
-                Avancar
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                loading={saving}
-                onClick={() => void handleEntrega()}
-              >
-                Confirmar entrega
-              </Button>
-            )}
-          </Space>
-        }
-      >
-        <Steps
-          current={stepEntrega}
-          size="small"
-          items={[{ title: "Colaborador" }, { title: "Itens e estoque" }]}
-        />
-        <Form layout="vertical" form={formEntrega} className="mt-4">
-          {stepEntrega === 0 ? (
-            <>
-              <Form.Item
-                name="colaboradorId"
-                label="Colaborador"
-                rules={[
-                  { required: true, message: "Selecione um colaborador" },
-                ]}
-              >
-                <Select
-                  showSearch
-                  placeholder="Selecione o colaborador"
-                  options={colaboradoresMock.map((colab) => ({
-                    label: colab.nome,
-                    value: colab.id,
-                  }))}
-                  onChange={(value) => {
-                    const selected = colaboradoresMock.find(
-                      (colab) => colab.id === value,
-                    );
-                    formEntrega.setFieldValue(
-                      "colaboradorNome",
-                      selected?.nome ?? "",
-                    );
-                  }}
-                  filterOption={(input, option) =>
-                    String(option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-              <Form.Item name="colaboradorNome" hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item name="unidadeId" hidden>
-                <Input />
-              </Form.Item>
-            </>
-          ) : (
-            <>
-              <Form.List
-                name="itens"
-                initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
-              >
-                {(fields, { add, remove }) => (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      <Select
-                        placeholder="Unidade"
-                        value={entregaUnidadeId ?? undefined}
-                        onChange={async (value) => {
-                          setEntregaUnidadeId(value ?? null);
-                          formEntrega.setFieldValue("unidadeId", value);
-                          if (value) {
-                            const estoqueResult = await fetchEstoque({
-                              unidadeId: value,
-                            });
-                            const estoqueUi = mapEstoqueToUi(estoqueResult);
-                            setEstoqueEntrega(
-                              estoqueUi.map((item) => ({
-                                variacaoId: item.variacaoId,
-                                total: item.total,
-                                reservado: item.reservado,
-                              })),
-                            );
-                          }
-                        }}
-                        options={unidades.map((u) => ({
-                          label: u.nome,
-                          value: u.id,
-                        }))}
-                        style={{ minWidth: 180 }}
-                      />
-                      <Select
-                        placeholder="Genero"
-                        allowClear
-                        value={entregaGenero ?? undefined}
-                        onChange={(value) => setEntregaGenero(value ?? null)}
-                        options={[
-                          { label: "Masculino", value: Genero.MASCULINO },
-                          { label: "Feminino", value: Genero.FEMININO },
-                          { label: "Unissex", value: Genero.UNISSEX },
-                        ]}
-                        style={{ minWidth: 160 }}
-                      />
-                      <Select
-                        placeholder="Tamanho"
-                        allowClear
-                        value={entregaTamanho ?? undefined}
-                        onChange={(value) => setEntregaTamanho(value ?? null)}
-                        options={tamanhosDisponiveis.map((tamanho) => ({
-                          label: tamanho,
-                          value: tamanho,
-                        }))}
-                        style={{ minWidth: 140 }}
-                      />
-                    </div>
-                    <Divider className="my-4">Itens</Divider>
-                    {fields.map((field) => (
-                      <Space key={field.key} align="baseline">
-                        <Form.Item
-                          name={[field.name, "variacaoId"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Select
-                            placeholder="Variacao"
-                            options={variacaoOptionsFiltradas}
-                            style={{ minWidth: 200 }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[field.name, "quantidade"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Input type="number" min={1} />
-                        </Form.Item>
-                        <Button onClick={() => remove(field.name)}>
-                          Remover
-                        </Button>
-                      </Space>
-                    ))}
-                    <Button onClick={() => add()}>Adicionar item</Button>
-                  </div>
-                )}
-              </Form.List>
-              <div className="mt-4">
-                <Divider className="my-4">Estoque</Divider>
-                <div className="text-xs text-neutral-500">
-                  Estoque disponivel por variacao (total e reservado)
-                </div>
-                <div className="mt-2">
-                  {estoqueEntrega.length === 0 ? (
-                    <Alert
-                      type="info"
-                      message={
-                        entregaUnidadeId
-                          ? "Nenhum estoque encontrado para a unidade selecionada."
-                          : "Selecione a unidade para carregar o estoque."
-                      }
-                      showIcon
-                    />
-                  ) : estoqueEntrega.filter((item) => {
-                      const variacao = variacoes.find(
-                        (v) => v.id === item.variacaoId,
-                      );
-                      if (!variacao) return false;
-                      if (entregaGenero && variacao.genero !== entregaGenero)
-                        return false;
-                      if (entregaTamanho && variacao.tamanho !== entregaTamanho)
-                        return false;
-                      return true;
-                    }).length === 0 ? (
-                    <Alert
-                      type="info"
-                      message="Nenhum item encontrado para os filtros selecionados."
-                      showIcon
-                    />
-                  ) : (
-                    <Table
-                      size="small"
-                      pagination={false}
-                      rowKey="variacaoId"
-                      dataSource={estoqueEntrega.filter((item) => {
-                        const variacao = variacoes.find(
-                          (v) => v.id === item.variacaoId,
-                        );
-                        if (!variacao) return false;
-                        if (entregaGenero && variacao.genero !== entregaGenero)
-                          return false;
-                        if (
-                          entregaTamanho &&
-                          variacao.tamanho !== entregaTamanho
-                        )
-                          return false;
-                        return true;
-                      })}
-                      columns={[
-                        {
-                          title: "Variacao",
-                          dataIndex: "variacaoId",
-                          key: "variacaoId",
-                          render: (value: string) => {
-                            const variacao = variacoes.find(
-                              (item) => item.id === value,
-                            );
-                            return variacao
-                              ? `${variacao.tipoNome} - ${variacao.tamanho} - ${variacao.genero}`
-                              : value;
-                          },
-                        },
-                        {
-                          title: "Total",
-                          dataIndex: "total",
-                          key: "total",
-                        },
-                        {
-                          title: "Reservado",
-                          dataIndex: "reservado",
-                          key: "reservado",
-                        },
-                        {
-                          title: "Disponivel",
-                          key: "disponivel",
-                          render: (_: unknown, record: any) =>
-                            record.total - record.reservado,
-                        },
-                      ]}
-                    />
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-        </Form>
-      </Modal>
+      />
 
-      <Modal
+      <MovimentacaoDevolucaoWizard
         open={openDevolucao}
+        saving={saving}
+        step={stepDevolucao}
+        setStep={setStepDevolucao}
+        form={formDevolucao}
+        colaboradores={colaboradoresMock}
+        unidades={unidades}
+        variacoes={variacoes}
+        variacaoOptionsDevolucao={variacaoOptionsDevolucao}
+        tamanhosDisponiveis={tamanhosDisponiveis}
+        devolucaoUnidadeId={devolucaoUnidadeId}
+        setDevolucaoUnidadeId={async (value) => {
+          setDevolucaoUnidadeId(value);
+          formDevolucao.setFieldValue("unidadeId", value ?? undefined);
+          if (value) {
+            const estoqueResult = await fetchEstoque({
+              unidadeId: value,
+            });
+            const estoqueUi = mapEstoqueToUi(estoqueResult);
+            setDevolucaoEstoqueIds(estoqueUi.map((item) => item.variacaoId));
+          } else {
+            setDevolucaoEstoqueIds([]);
+          }
+        }}
+        devolucaoGenero={devolucaoGenero}
+        setDevolucaoGenero={setDevolucaoGenero}
+        devolucaoTamanho={devolucaoTamanho}
+        setDevolucaoTamanho={setDevolucaoTamanho}
+        devolucaoEstoqueIds={devolucaoEstoqueIds}
+        variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
+        onAdvance={async () => {
+          try {
+            await formDevolucao.validateFields(["colaboradorId"]);
+            if (devolucaoUnidadeId) {
+              formDevolucao.setFieldValue("unidadeId", devolucaoUnidadeId);
+            }
+            setStepDevolucao(1);
+          } catch (err) {
+            const apiError = parseApiError(err);
+            toaster.alerta("Verifique os dados", apiError.message);
+          }
+        }}
+        onConfirm={() => void handleDevolucao()}
         onCancel={() => {
           setOpenDevolucao(false);
           setStepDevolucao(0);
@@ -744,210 +560,7 @@ export default function MovimentacoesPage() {
           setDevolucaoTamanho(null);
           setDevolucaoEstoqueIds([]);
         }}
-        title="Nova devolucao"
-        footer={
-          <Space>
-            <Button
-              onClick={() => {
-                setOpenDevolucao(false);
-                setStepDevolucao(0);
-                formDevolucao.resetFields();
-                setDevolucaoUnidadeId(null);
-                setDevolucaoGenero(null);
-                setDevolucaoTamanho(null);
-                setDevolucaoEstoqueIds([]);
-              }}
-            >
-              Cancelar
-            </Button>
-            {stepDevolucao > 0 ? (
-              <Button onClick={() => setStepDevolucao(stepDevolucao - 1)}>
-                Voltar
-              </Button>
-            ) : null}
-            {stepDevolucao < 1 ? (
-              <Button
-                type="primary"
-                onClick={async () => {
-                  try {
-                    await formDevolucao.validateFields(["colaboradorId"]);
-                    if (devolucaoUnidadeId) {
-                      formDevolucao.setFieldValue(
-                        "unidadeId",
-                        devolucaoUnidadeId,
-                      );
-                    }
-                    setStepDevolucao(1);
-                  } catch (err) {
-                    const apiError = parseApiError(err);
-                    toaster.alerta("Verifique os dados", apiError.message);
-                  }
-                }}
-              >
-                Avancar
-              </Button>
-            ) : (
-              <Button
-                type="primary"
-                loading={saving}
-                onClick={() => void handleDevolucao()}
-              >
-                Confirmar devolucao
-              </Button>
-            )}
-          </Space>
-        }
-      >
-        <Steps
-          current={stepDevolucao}
-          size="small"
-          items={[{ title: "Colaborador e unidade" }, { title: "Itens" }]}
-        />
-        <Form layout="vertical" form={formDevolucao} className="mt-4">
-          {stepDevolucao === 0 ? (
-            <>
-              <Form.Item
-                name="colaboradorId"
-                label="Colaborador"
-                rules={[
-                  { required: true, message: "Selecione um colaborador" },
-                ]}
-              >
-                <Select
-                  showSearch
-                  placeholder="Selecione o colaborador"
-                  options={colaboradoresMock.map((colab) => ({
-                    label: colab.nome,
-                    value: colab.id,
-                  }))}
-                  onChange={(value) => {
-                    const selected = colaboradoresMock.find(
-                      (colab) => colab.id === value,
-                    );
-                    formDevolucao.setFieldValue(
-                      "colaboradorNome",
-                      selected?.nome ?? "",
-                    );
-                  }}
-                  filterOption={(input, option) =>
-                    String(option?.label ?? "")
-                      .toLowerCase()
-                      .includes(input.toLowerCase())
-                  }
-                />
-              </Form.Item>
-              <Form.Item name="colaboradorNome" hidden>
-                <Input />
-              </Form.Item>
-              <Form.Item name="unidadeId" hidden>
-                <Input />
-              </Form.Item>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <Select
-                  placeholder="Unidade"
-                  allowClear
-                  value={devolucaoUnidadeId ?? undefined}
-                  onChange={async (value) => {
-                    setDevolucaoUnidadeId(value ?? null);
-                    formDevolucao.setFieldValue("unidadeId", value);
-                    if (value) {
-                      const estoqueResult = await fetchEstoque({
-                        unidadeId: value,
-                      });
-                      const estoqueUi = mapEstoqueToUi(estoqueResult);
-                      setDevolucaoEstoqueIds(
-                        estoqueUi.map((item) => item.variacaoId),
-                      );
-                    } else {
-                      setDevolucaoEstoqueIds([]);
-                    }
-                  }}
-                  options={unidades.map((u) => ({
-                    label: u.nome,
-                    value: u.id,
-                  }))}
-                  style={{ minWidth: 180 }}
-                />
-                <Select
-                  placeholder="Genero"
-                  allowClear
-                  value={devolucaoGenero ?? undefined}
-                  onChange={(value) => setDevolucaoGenero(value ?? null)}
-                  options={[
-                    { label: "Masculino", value: Genero.MASCULINO },
-                    { label: "Feminino", value: Genero.FEMININO },
-                    { label: "Unissex", value: Genero.UNISSEX },
-                  ]}
-                  style={{ minWidth: 160 }}
-                />
-                <Select
-                  placeholder="Tamanho"
-                  allowClear
-                  value={devolucaoTamanho ?? undefined}
-                  onChange={(value) => setDevolucaoTamanho(value ?? null)}
-                  options={tamanhosDisponiveis.map((tamanho) => ({
-                    label: tamanho,
-                    value: tamanho,
-                  }))}
-                  style={{ minWidth: 140 }}
-                />
-              </div>
-              <Divider className="my-4">Itens</Divider>
-              <Form.List
-                name="itens"
-                initialValue={[{ variacaoId: undefined, quantidade: 1 }]}
-              >
-                {(fields, { add, remove }) => (
-                  <div className="space-y-2">
-                    {fields.map((field) => (
-                      <Space key={field.key} align="baseline">
-                        <Form.Item
-                          name={[field.name, "variacaoId"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Select
-                            placeholder="Variacao"
-                            options={variacaoOptionsDevolucao}
-                            style={{ minWidth: 200 }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[field.name, "quantidade"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Input type="number" min={1} />
-                        </Form.Item>
-                        <Button onClick={() => remove(field.name)}>
-                          Remover
-                        </Button>
-                      </Space>
-                    ))}
-                    <Button onClick={() => add()}>Adicionar item</Button>
-                    {devolucaoUnidadeId && devolucaoEstoqueIds.length === 0 ? (
-                      <Alert
-                        className="mt-2"
-                        type="info"
-                        message="Nenhum estoque encontrado para a unidade selecionada."
-                        showIcon
-                      />
-                    ) : variacoesDevolucaoFiltradas.length === 0 ? (
-                      <Alert
-                        className="mt-2"
-                        type="info"
-                        message="Nenhum item encontrado para os filtros selecionados."
-                        showIcon
-                      />
-                    ) : null}
-                  </div>
-                )}
-              </Form.List>
-            </>
-          )}
-        </Form>
-      </Modal>
+      />
     </FardamentosShell>
   );
 }
