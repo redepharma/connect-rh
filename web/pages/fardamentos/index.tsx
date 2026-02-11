@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Button, Card, Input, Space, Typography } from "antd";
+import { Alert, Button, Card, Input, Space, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { LOW_STOCK_THRESHOLD } from "@/modules/fardamentos/types/fardamentos.constants";
+import DefaultLayout from "@/layouts/default";
 import type { EstoqueItem } from "@/modules/fardamentos/types/fardamentos.types";
 import {
   fetchAvarias,
@@ -37,10 +38,10 @@ export default function FardamentosOverview() {
       try {
         const [metricsResult, estoqueResult, avariasResult] = await Promise.all(
           [
-          fetchMetrics(),
-          fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
-          fetchAvarias({ offset: 0, limit: 5 }),
-          ],
+            fetchMetrics(),
+            fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
+            fetchAvarias({ offset: 0, limit: 5 }),
+          ]
         );
 
         if (!active) return;
@@ -67,89 +68,184 @@ export default function FardamentosOverview() {
   const totalReservado = metrics?.estoqueReservado ?? 0;
   const disponivel = totalEstoque - totalReservado;
   const lowStockItems = estoque.filter(
-    (item) => item.total - item.reservado < LOW_STOCK_THRESHOLD,
+    (item) => item.total - item.reservado < LOW_STOCK_THRESHOLD
   );
 
   return (
-    <FardamentosShell
-      title="Visao geral"
-      description="Visao geral do catalogo e estoque do modulo de fardamentos."
-      actions={
-        <Space>
-          <Link href="/fardamentos/tipos">
+    <DefaultLayout>
+      <FardamentosShell
+        title="Visao geral"
+        description="Visao geral do catalogo e estoque do modulo de fardamentos."
+        actions={
+          <Space>
             <Button type="primary">Novo tipo</Button>
-          </Link>
-          <Link href="/fardamentos/unidades">
             <Button>Nova unidade</Button>
-          </Link>
-        </Space>
-      }
-    >
-      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          title="Estoque disponivel"
-          value={loading ? "--" : disponivel}
-          helper={`${totalReservado} itens reservados`}
-        />
-        <KpiCard
-          title="Alertas de baixo estoque"
-          value={loading ? "--" : (metrics?.lowStockCount ?? 0)}
-          helper={`Limite: < ${LOW_STOCK_THRESHOLD}`}
-          tag={(metrics?.lowStockCount ?? 0) ? "Atencao" : "OK"}
-          tagColor={(metrics?.lowStockCount ?? 0) ? "red" : "green"}
-        />
-        <KpiCard
-          title="Unidades ativas"
-          value={loading ? "--" : (metrics?.unidades ?? 0)}
-          helper="Unidades cadastradas"
-        />
-        <KpiCard
-          title="Tipos e variacoes"
-          value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
-          helper={`${metrics?.variacoes ?? 0} variacoes cadastradas`}
-        />
-      </section>
+          </Space>
+        }
+      >
+        {error ? (
+          <Alert
+            type="error"
+            message="Falha ao carregar dados do painel"
+            description={error}
+            showIcon
+          />
+        ) : null}
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+        <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            title="Estoque disponivel"
+            value={loading ? "--" : disponivel}
+            helper={`${totalReservado} itens reservados`}
+          />
+          <KpiCard
+            title="Alertas de baixo estoque"
+            value={loading ? "--" : lowStockItems.length}
+            helper={`Limite: < ${LOW_STOCK_THRESHOLD}`}
+            tag={lowStockItems.length ? "Atencao" : "OK"}
+            tagColor={lowStockItems.length ? "red" : "green"}
+          />
+          <KpiCard
+            title="Unidades ativas"
+            value={loading ? "--" : unidades.length}
+            helper="Unidades cadastradas"
+          />
+          <KpiCard
+            title="Tipos e variacoes"
+            value={loading ? "--" : `${tipos.length} tipos`}
+            helper={`${variacoes.length} variacoes cadastradas`}
+          />
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+          <SectionCard
+            title="Alertas de estoque"
+            description="Itens abaixo do limite minimo configurado."
+            actions={
+              <Link href="/fardamentos/estoque">
+                <Button type="primary">Ver estoque</Button>
+              </Link>
+            }
+          >
+            <div className="space-y-3">
+              {lowStockItems.length === 0 ? (
+                <Typography.Text className="text-sm text-neutral-500">
+                  Nenhum item abaixo do estoque minimo no momento.
+                </Typography.Text>
+              ) : (
+                lowStockItems.map((item) => (
+                  <Card
+                    key={item.id}
+                    className="border border-neutral-200/70"
+                    size="small"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <Typography.Text className="block text-sm font-medium text-neutral-900">
+                          {item.tipoNome}
+                        </Typography.Text>
+                        <Typography.Text className="block text-xs text-neutral-500">
+                          {item.variacaoLabel}
+                        </Typography.Text>
+                        <Typography.Text className="block text-xs text-neutral-500">
+                          Unidade: {item.unidade}
+                        </Typography.Text>
+                      </div>
+                      <div className="text-right">
+                        <Typography.Text className="block text-sm font-semibold text-red-600">
+                          {item.total - item.reservado} disponiveis
+                        </Typography.Text>
+                        <Typography.Text className="block text-xs text-neutral-500">
+                          {item.reservado} reservados
+                        </Typography.Text>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Atalhos rapidos"
+            description="Navegue para as telas principais do catalogo."
+            actions={<Input placeholder="Buscar unidade" />}
+          >
+            <div className="flex flex-col gap-2">
+              {[
+                {
+                  label: "Cadastro de unidades",
+                  href: "/fardamentos/unidades",
+                },
+                { label: "Cadastro de tipos", href: "/fardamentos/tipos" },
+                {
+                  label: "Variacoes e tamanhos",
+                  href: "/fardamentos/variacoes",
+                },
+                { label: "Controle de estoque", href: "/fardamentos/estoque" },
+                { label: "Movimentacoes", href: "/fardamentos/movimentacoes" },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          </SectionCard>
+        </section>
+
         <SectionCard
-          title="Alertas de estoque"
-          description="Itens abaixo do limite minimo configurado."
+          title="Avarias recentes"
+          description="Ultimos registros de avarias e ajustes realizados."
           actions={
-            <Link href="/fardamentos/estoque">
-              <Button type="primary">Ver estoque</Button>
+            <Link href="/fardamentos/avarias">
+              <Button type="primary">Ver avarias</Button>
             </Link>
           }
         >
-          <div className="space-y-3">
-            {lowStockItems.length === 0 ? (
+          <div className="flex flex-wrap gap-3">
+            <Card className="border border-neutral-200/70" size="small">
+              <Typography.Text className="block text-xs text-neutral-500">
+                Total de avarias
+              </Typography.Text>
+              <Typography.Text className="text-lg font-semibold text-neutral-900">
+                {loading ? "--" : totalAvarias}
+              </Typography.Text>
+            </Card>
+          </div>
+          <div className="mt-4 space-y-3">
+            {avarias.length === 0 ? (
               <Typography.Text className="text-sm text-neutral-500">
-                Nenhum item abaixo do estoque minimo no momento.
+                Nenhuma avaria registrada ainda.
               </Typography.Text>
             ) : (
-              lowStockItems.map((item) => (
+              avarias.map((avaria) => (
                 <Card
-                  key={item.id}
+                  key={avaria.id}
                   className="border border-neutral-200/70"
                   size="small"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <Typography.Text className="block text-sm font-medium text-neutral-900">
-                        {item.tipoNome}
+                        {avaria.colaboradorNome}
                       </Typography.Text>
                       <Typography.Text className="block text-xs text-neutral-500">
-                        {item.variacaoLabel}
+                        {avaria.tipoNome} - {avaria.variacaoLabel}
                       </Typography.Text>
                       <Typography.Text className="block text-xs text-neutral-500">
-                        Unidade: {item.unidade}
+                        Unidade: {avaria.unidadeNome}
                       </Typography.Text>
                     </div>
                     <div className="text-right">
-                      <Typography.Text className="block text-sm font-semibold text-red-600">
-                        {item.total - item.reservado} disponiveis
+                      <Typography.Text className="block text-sm font-semibold text-neutral-900">
+                        {avaria.quantidade} itens
                       </Typography.Text>
                       <Typography.Text className="block text-xs text-neutral-500">
-                        {item.reservado} reservados
+                        {avaria.createdAt}
                       </Typography.Text>
                     </div>
                   </div>
@@ -158,89 +254,7 @@ export default function FardamentosOverview() {
             )}
           </div>
         </SectionCard>
-
-        <SectionCard
-          title="Atalhos rapidos"
-          description="Navegue para as telas principais do catalogo."
-          actions={<Input placeholder="Buscar unidade" />}
-        >
-          <div className="flex flex-col gap-2">
-            {[
-              { label: "Cadastro de unidades", href: "/fardamentos/unidades" },
-              { label: "Cadastro de tipos", href: "/fardamentos/tipos" },
-              { label: "Variacoes e tamanhos", href: "/fardamentos/variacoes" },
-              { label: "Controle de estoque", href: "/fardamentos/estoque" },
-              { label: "Movimentacoes", href: "/fardamentos/movimentacoes" },
-            ].map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </SectionCard>
-      </section>
-
-      <SectionCard
-        title="Avarias recentes"
-        description="Ultimos registros de avarias e ajustes realizados."
-        actions={
-          <Link href="/fardamentos/avarias">
-            <Button type="primary">Ver avarias</Button>
-          </Link>
-        }
-      >
-        <div className="flex flex-wrap gap-3">
-          <Card className="border border-neutral-200/70" size="small">
-            <Typography.Text className="block text-xs text-neutral-500">
-              Total de avarias
-            </Typography.Text>
-            <Typography.Text className="text-lg font-semibold text-neutral-900">
-              {loading ? "--" : totalAvarias}
-            </Typography.Text>
-          </Card>
-        </div>
-        <div className="mt-4 space-y-3">
-          {avarias.length === 0 ? (
-            <Typography.Text className="text-sm text-neutral-500">
-              Nenhuma avaria registrada ainda.
-            </Typography.Text>
-          ) : (
-            avarias.map((avaria) => (
-              <Card
-                key={avaria.id}
-                className="border border-neutral-200/70"
-                size="small"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <Typography.Text className="block text-sm font-medium text-neutral-900">
-                      {avaria.colaboradorNome}
-                    </Typography.Text>
-                    <Typography.Text className="block text-xs text-neutral-500">
-                      {avaria.tipoNome} - {avaria.variacaoLabel}
-                    </Typography.Text>
-                    <Typography.Text className="block text-xs text-neutral-500">
-                      Unidade: {avaria.unidadeNome}
-                    </Typography.Text>
-                  </div>
-                  <div className="text-right">
-                    <Typography.Text className="block text-sm font-semibold text-neutral-900">
-                      {avaria.quantidade} itens
-                    </Typography.Text>
-                    <Typography.Text className="block text-xs text-neutral-500">
-                      {avaria.createdAt}
-                    </Typography.Text>
-                  </div>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      </SectionCard>
-    </FardamentosShell>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }

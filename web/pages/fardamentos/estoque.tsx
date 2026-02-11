@@ -1,4 +1,4 @@
-import { Button, Input, Select, Space, Switch } from "antd";
+import { Alert, Button, Input, Select, Space, Switch } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -17,6 +17,7 @@ import type {
 import { mapTiposToUi } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import DefaultLayout from "@/layouts/default";
 
 export default function EstoquePage() {
   const [data, setData] = useState<EstoqueItem[]>([]);
@@ -141,110 +142,66 @@ export default function EstoquePage() {
   };
 
   return (
-    <FardamentosShell
-      title="Estoque"
-      description="Controle disponivel, reservas e alertas de baixo estoque."
-      actions={<Button>Atualizar estoque</Button>}
-    >
-      <SectionCard
-        title="Resumo de estoque"
-        description="Disponivel = total - reservado. Alerta itens abaixo do minimo."
-        actions={
-          <Space>
-            <Input
-              placeholder="Buscar item"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              allowClear
-            />
-            <Select
-              placeholder="Filtrar unidade"
-              value={unidadeId}
-              allowClear
-              onChange={(value) => {
-                setUnidadeId(value);
-                setPage(1);
-              }}
-              showSearch
-              onSearch={(value) => {
-                setUnidadesQuery(value);
-                setUnidadesOffset(0);
-                setUnidadesHasMore(true);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreUnidades();
-                }
-              }}
-              filterOption={false}
-              loading={unidadesLoading}
-              options={unidades.map((unit) => ({
-                label: unit.nome,
-                value: unit.id,
-              }))}
-              style={{ minWidth: 180 }}
-            />
-            <Select
-              placeholder="Filtrar tipo"
-              value={tipoId}
-              allowClear
-              onChange={(value) => {
-                setTipoId(value);
-                setPage(1);
-              }}
-              showSearch
-              onSearch={(value) => {
-                setTiposQuery(value);
-                setTiposOffset(0);
-                setTiposHasMore(true);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreTipos();
-                }
-              }}
-              filterOption={false}
-              loading={tiposLoading}
-              options={tipos.map((tipo) => ({
-                label: tipo.nome,
-                value: tipo.id,
-              }))}
-              style={{ minWidth: 180 }}
-            />
-            <Switch
-              checked={baixoEstoque}
-              onChange={(checked) => {
-                setBaixoEstoque(checked);
-                setPage(1);
-              }}
-              checkedChildren="Baixo estoque"
-              unCheckedChildren="Todos"
-            />
-          </Space>
-        }
+    <DefaultLayout>
+      <FardamentosShell
+        title="Estoque"
+        description="Controle disponivel, reservas e alertas de baixo estoque."
+        actions={<Button>Atualizar estoque</Button>}
       >
-        <EstoqueTable
-          data={data}
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (nextPage) => setPage(nextPage),
-          }}
-        />
-      </SectionCard>
-    </FardamentosShell>
+        <SectionCard
+          title="Resumo de estoque"
+          description="Disponivel = total - reservado. Alerta itens abaixo do minimo."
+          actions={
+            <Space>
+              <Input
+                placeholder="Buscar item"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                allowClear
+              />
+              <Select
+                placeholder="Filtrar unidade"
+                value={unidadeId}
+                allowClear
+                onChange={(value) => setUnidadeId(value)}
+                options={unidades.map((unit) => ({
+                  label: unit.nome,
+                  value: unit.id,
+                }))}
+                style={{ minWidth: 180 }}
+              />
+              <Select
+                placeholder="Filtrar tipo"
+                value={tipoId}
+                allowClear
+                onChange={(value) => setTipoId(value)}
+                options={tipos.map((tipo) => ({
+                  label: tipo.nome,
+                  value: tipo.id,
+                }))}
+                style={{ minWidth: 180 }}
+              />
+              <Switch
+                checked={baixoEstoque}
+                onChange={(checked) => setBaixoEstoque(checked)}
+                checkedChildren="Baixo estoque"
+                unCheckedChildren="Todos"
+              />
+            </Space>
+          }
+        >
+          {error ? (
+            <Alert
+              type="error"
+              message="Falha ao carregar estoque"
+              description={error}
+              showIcon
+            />
+          ) : (
+            <EstoqueTable data={data} loading={loading} />
+          )}
+        </SectionCard>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }

@@ -1,4 +1,13 @@
-import { Button, Form, Input, Select, Space } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+} from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -16,6 +25,7 @@ import {
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import DefaultLayout from "@/layouts/default";
 
 export default function TiposPage() {
   const [data, setData] = useState<TipoFardamento[]>([]);
@@ -151,85 +161,107 @@ export default function TiposPage() {
   };
 
   return (
-    <FardamentosShell
-      title="Tipos de fardamentos"
-      description="Gerencie os tipos e associacoes com unidades."
-      actions={
-        <Button type="primary" onClick={openCreate}>
-          Novo tipo
-        </Button>
-      }
-    >
-      <SectionCard
-        title="Catalogo de tipos"
-        description="Cada tipo pode ser vinculado a uma ou mais unidades."
+    <DefaultLayout>
+      <FardamentosShell
+        title="Tipos de fardamentos"
+        description="Gerencie os tipos e associacoes com unidades."
         actions={
-          <Space>
-            <Input
-              placeholder="Buscar tipo"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              allowClear
-            />
-            <Select
-              placeholder="Filtrar unidade"
-              value={unidadeId}
-              allowClear
-              onChange={(value) => {
-                setUnidadeId(value);
-                setPage(1);
-              }}
-              showSearch
-              onSearch={(value) => {
-                setUnidadesQuery(value);
-                setUnidadesOffset(0);
-                setUnidadesHasMore(true);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreUnidades();
-                }
-              }}
-              filterOption={false}
-              loading={unidadesLoading}
-              options={unidades.map((unit) => ({
-                label: unit.nome,
-                value: unit.id,
-              }))}
-              style={{ minWidth: 180 }}
-            />
-          </Space>
+          <Button type="primary" onClick={openCreate}>
+            Novo tipo
+          </Button>
         }
       >
-        <TipoTable
-          data={data}
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (nextPage) => setPage(nextPage),
-          }}
-          onEdit={openEdit}
-          onDelete={(tipo) => void handleDelete(tipo)}
-        />
-      </SectionCard>
-      <TipoModal
-        open={open}
-        editing={editing}
-        form={form}
-        saving={saving}
-        unidades={unidades}
-        onCancel={() => setOpen(false)}
-        onOk={handleSave}
-      />
-    </FardamentosShell>
+        <SectionCard
+          title="Catalogo de tipos"
+          description="Cada tipo pode ser vinculado a uma ou mais unidades."
+          actions={
+            <Space>
+              <Input
+                placeholder="Buscar tipo"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                allowClear
+              />
+              <Select
+                placeholder="Filtrar unidade"
+                value={unidadeId}
+                allowClear
+                onChange={(value) => setUnidadeId(value)}
+                options={unidades.map((unit) => ({
+                  label: unit.nome,
+                  value: unit.id,
+                }))}
+                style={{ minWidth: 180 }}
+              />
+            </Space>
+          }
+        >
+          {error ? (
+            <Alert
+              type="error"
+              message="Falha ao carregar tipos"
+              description={error}
+              showIcon
+            />
+          ) : (
+            <TipoTable data={data} loading={loading} />
+          )}
+          {!error ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {data.map((tipo) => (
+                <div
+                  key={tipo.id}
+                  className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
+                >
+                  <span>{tipo.nome}</span>
+                  <Button size="small" onClick={() => openEdit(tipo)}>
+                    Editar
+                  </Button>
+                  <Popconfirm
+                    title="Remover tipo?"
+                    okText="Sim"
+                    cancelText="Nao"
+                    onConfirm={() => void handleDelete(tipo)}
+                  >
+                    <Button size="small" danger>
+                      Remover
+                    </Button>
+                  </Popconfirm>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </SectionCard>
+        <Modal
+          open={open}
+          onCancel={() => setOpen(false)}
+          onOk={handleSave}
+          confirmLoading={saving}
+          title={editing ? "Editar tipo" : "Novo tipo"}
+        >
+          <Form layout="vertical" form={form}>
+            <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
+              <Input placeholder="Ex: Camisa Polo" />
+            </Form.Item>
+            <Form.Item
+              name="unidadesIds"
+              label="Unidades"
+              rules={[
+                { required: true, message: "Selecione ao menos uma unidade" },
+              ]}
+            >
+              <Select
+                mode="multiple"
+                placeholder="Selecione unidades"
+                options={unidades.map((unit) => ({
+                  label: unit.nome,
+                  value: unit.id,
+                }))}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }

@@ -1,10 +1,27 @@
-import { Button, Form, Input, Space } from "antd";
+import {
+  Alert,
+  Button,
+  Form,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+} from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { UnitTable } from "@/modules/fardamentos/components/unit-table";
 import { UnidadeModal } from "@/modules/fardamentos/components/unidade-modal";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
+import {
+  createUnidade,
+  deleteUnidade,
+  fetchUnidades,
+  updateUnidade,
+} from "@/modules/fardamentos/services/fardamentos.service";
+import { parseApiError } from "@/shared/error-handlers/api-errors";
+import DefaultLayout from "@/layouts/default";
 import {
   createUnidade,
   deleteUnidade,
@@ -110,53 +127,91 @@ export default function UnidadesPage() {
   };
 
   return (
-    <FardamentosShell
-      title="Unidades"
-      description="Cadastre e gerencie as unidades responsaveis pelos fardamentos."
-      actions={
-        <Button type="primary" onClick={openCreate}>
-          Nova unidade
-        </Button>
-      }
-    >
-      <SectionCard
-        title="Lista de unidades"
-        description="As unidades definem quais setores podem receber cada tipo de fardamento."
+    <DefaultLayout>
+      <FardamentosShell
+        title="Unidades"
+        description="Cadastre e gerencie as unidades responsaveis pelos fardamentos."
         actions={
-          <Space>
-            <Input
-              placeholder="Buscar unidade"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              allowClear
-            />
-          </Space>
+          <Button type="primary" onClick={openCreate}>
+            Nova unidade
+          </Button>
         }
       >
-        <UnitTable
-          data={data}
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (nextPage) => setPage(nextPage),
-          }}
-          onEdit={openEdit}
-          onDelete={(unit) => void handleDelete(unit)}
-        />
-      </SectionCard>
-      <UnidadeModal
-        open={open}
-        editing={editing}
-        form={form}
-        saving={saving}
-        onCancel={() => setOpen(false)}
-        onOk={handleSave}
-      />
-    </FardamentosShell>
+        <SectionCard
+          title="Lista de unidades"
+          description="As unidades definem quais setores podem receber cada tipo de fardamento."
+          actions={
+            <Space>
+              <Input
+                placeholder="Buscar unidade"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                allowClear
+              />
+            </Space>
+          }
+        >
+          {error ? (
+            <Alert
+              type="error"
+              message="Falha ao carregar unidades"
+              description={error}
+              showIcon
+            />
+          ) : (
+            <UnitTable data={data} loading={loading} />
+          )}
+          {!error ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {data.map((unit) => (
+                <div
+                  key={unit.id}
+                  className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
+                >
+                  <span>{unit.nome}</span>
+                  <Button size="small" onClick={() => openEdit(unit)}>
+                    Editar
+                  </Button>
+                  <Popconfirm
+                    title="Remover unidade?"
+                    okText="Sim"
+                    cancelText="Nao"
+                    onConfirm={() => void handleDelete(unit)}
+                  >
+                    <Button size="small" danger>
+                      Remover
+                    </Button>
+                  </Popconfirm>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </SectionCard>
+        <Modal
+          open={open}
+          onCancel={() => setOpen(false)}
+          onOk={handleSave}
+          confirmLoading={saving}
+          title={editing ? "Editar unidade" : "Nova unidade"}
+        >
+          <Form layout="vertical" form={form}>
+            <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
+              <Input placeholder="Ex: Loja Centro" />
+            </Form.Item>
+            <Form.Item name="descricao" label="Descricao">
+              <Input placeholder="Descricao opcional" />
+            </Form.Item>
+            <Form.Item name="ativo" label="Status" initialValue={true}>
+              <Select
+                options={[
+                  { label: "Ativa", value: true },
+                  { label: "Inativa", value: false },
+                ]}
+              />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }

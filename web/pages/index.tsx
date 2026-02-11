@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/context/auth-context";
 import { clearAccessToken } from "@/context/auth-storage";
+import DefaultLayout from "@/layouts/default";
 
 export default function Home() {
   const { isAuthenticated, isLoading, reloadUser } = useAuth();
@@ -46,26 +47,28 @@ export default function Home() {
   }
 
   return (
-    <div className="page-container">
-      <h1 className="text-2xl font-semibold text-neutral-900">Connect RH</h1>
-      {isLoading ? (
-        <p className="mt-2 text-sm text-neutral-500">Carregando...</p>
-      ) : isAuthenticated ? (
-        <p className="mt-2 text-sm text-neutral-500">SSO ok. Sessão ativa.</p>
-      ) : (
-        <p className="mt-2 text-sm text-neutral-500">
-          Redirecionando para o Connect...
-        </p>
-      )}
-      <button
-        onClick={() => {
-          clearAccessToken();
-          if (ssoUrl) window.location.href = ssoUrl;
-        }}
-        className="mt-4 inline-flex items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
-      >
-        Reautenticar
-      </button>
-    </div>
+    <DefaultLayout>
+      <div className="page-container">
+        <h1 className="text-2xl font-semibold text-neutral-900">Connect RH</h1>
+        {isLoading ? (
+          <p className="mt-2 text-sm text-neutral-500">Carregando...</p>
+        ) : isAuthenticated ? (
+          <p className="mt-2 text-sm text-neutral-500">SSO ok. Sessão ativa.</p>
+        ) : (
+          <p className="mt-2 text-sm text-neutral-500">
+            Redirecionando para o Connect...
+          </p>
+        )}
+        <button
+          onClick={() => {
+            clearAccessToken();
+            if (ssoUrl) window.location.href = ssoUrl;
+          }}
+          className="mt-4 inline-flex items-center rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
+        >
+          Reautenticar
+        </button>
+      </div>
+    </DefaultLayout>
   );
 }
