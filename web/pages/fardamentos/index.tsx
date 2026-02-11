@@ -85,6 +85,7 @@ export default function FardamentosOverview() {
             value={loading ? "--" : disponivel}
             helper={`${totalReservado} itens reservados`}
             loading={loading}
+            tooltip="Quantidade de itens que já foram marcados para entrega."
           />
           <KpiCard
             title="Alertas de baixo estoque"
@@ -105,6 +106,7 @@ export default function FardamentosOverview() {
             value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
             helper={`${metrics?.variacoes ?? 0} variações cadastradas`}
             loading={loading}
+            tooltip="Cada tipo de fardamento pode ter variações de tamanho, sexo, etc."
           />
         </section>
 

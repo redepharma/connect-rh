@@ -1,5 +1,7 @@
 "use client";
 
+import { AppTooltip } from "@/components/tooltip";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 import { Card, Skeleton, Statistic, Tag, Typography } from "antd";
 
 type KpiCardProps = {
@@ -9,6 +11,7 @@ type KpiCardProps = {
   tag?: string;
   tagColor?: string;
   loading?: boolean;
+  tooltip?: string;
 };
 
 export function KpiCard({
@@ -18,6 +21,7 @@ export function KpiCard({
   tag,
   tagColor,
   loading = false,
+  tooltip,
 }: KpiCardProps) {
   return (
     <Card className="border border-neutral-200/70 shadow-sm">
@@ -41,7 +45,12 @@ export function KpiCard({
               <Skeleton.Input active size="small" style={{ width: 140 }} />
             ) : (
               <Typography.Text className="text-xs! text-neutral-500 ">
-                {helper}
+                {helper}{" "}
+                {tooltip ? (
+                  <AppTooltip title={tooltip}>
+                    <QuestionCircleOutlined />
+                  </AppTooltip>
+                ) : null}
               </Typography.Text>
             )
           ) : (
