@@ -38,13 +38,7 @@ export function FardamentosShell({
         <header className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <Typography.Text className="text-[11px] uppercase tracking-wide text-neutral-500">
-                Connect RH - Fardamentos & EPIs
-              </Typography.Text>
-              <Typography.Title
-                level={2}
-                className="!mb-1 !mt-0 text-neutral-900"
-              >
+              <Typography.Title level={2} className="mb-1! mt-0!">
                 {title}
               </Typography.Title>
               {description ? (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert, Button, Card, Input, Space, Typography } from "antd";
+import { Button, Card, Divider, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
@@ -20,7 +20,6 @@ export default function FardamentosOverview() {
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
   const [avarias, setAvarias] = useState<Avaria[]>([]);
   const [totalAvarias, setTotalAvarias] = useState(0);
-  const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<{
     unidades: number;
     tipos: number;
@@ -36,13 +35,14 @@ export default function FardamentosOverview() {
 
     const load = async () => {
       setLoading(true);
-      setError(null);
       try {
-        const [metricsResult, estoqueResult, avariasResult] = await Promise.all([
-          fetchMetrics(),
-          fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
-          fetchAvarias({ offset: 0, limit: 5 }),
-        ]);
+        const [metricsResult, estoqueResult, avariasResult] = await Promise.all(
+          [
+            fetchMetrics(),
+            fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
+            fetchAvarias({ offset: 0, limit: 5 }),
+          ],
+        );
 
         if (!active) return;
 
@@ -52,11 +52,6 @@ export default function FardamentosOverview() {
         setTotalAvarias(avariasResult.total);
       } catch (err) {
         if (active) {
-          const message =
-            err instanceof Error
-              ? err.message
-              : "Nao foi possivel carregar os dados do painel.";
-          setError(message);
           toaster.erro("Erro ao carregar dados do painel", err);
         }
       } finally {
@@ -81,39 +76,20 @@ export default function FardamentosOverview() {
   return (
     <DefaultLayout>
       <FardamentosShell
-        title="Visao geral"
+        title="VISÃO GERAL"
         description="Visao geral do catalogo e estoque do modulo de fardamentos."
-        actions={
-          <Space>
-            <Link href="/fardamentos/tipos">
-              <Button type="primary">Novo tipo</Button>
-            </Link>
-            <Link href="/fardamentos/unidades">
-              <Button>Nova unidade</Button>
-            </Link>
-          </Space>
-        }
       >
-        {error ? (
-          <Alert
-            type="error"
-            message="Falha ao carregar dados do painel"
-            description={error}
-            showIcon
-          />
-        ) : null}
-
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <KpiCard
-            title="Estoque disponivel"
+            title="Estoque disponível"
             value={loading ? "--" : disponivel}
             helper={`${totalReservado} itens reservados`}
           />
           <KpiCard
             title="Alertas de baixo estoque"
             value={loading ? "--" : (metrics?.lowStockCount ?? 0)}
-            helper={`Limite: < ${LOW_STOCK_THRESHOLD}`}
-            tag={(metrics?.lowStockCount ?? 0) ? "Atencao" : "OK"}
+            helper={`Itens com quantidade abaixo de ${LOW_STOCK_THRESHOLD}`}
+            tag={(metrics?.lowStockCount ?? 0) ? "Atenção" : "OK"}
             tagColor={(metrics?.lowStockCount ?? 0) ? "red" : "green"}
           />
           <KpiCard
@@ -122,29 +98,29 @@ export default function FardamentosOverview() {
             helper="Unidades cadastradas"
           />
           <KpiCard
-            title="Tipos e variacoes"
+            title="Tipos e variações"
             value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
-            helper={`${metrics?.variacoes ?? 0} variacoes cadastradas`}
+            helper={`${metrics?.variacoes ?? 0} variações cadastradas`}
           />
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
           <SectionCard
             title="Alertas de estoque"
-            description="Itens abaixo do limite minimo configurado."
+            description="Itens abaixo do limite mínimo configurado."
             actions={
               <Link href="/fardamentos/estoque">
                 <Button type="primary">Ver estoque</Button>
               </Link>
             }
           >
-            <div className="space-y-3">
+            <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
               {lowStockItems.length === 0 ? (
                 <Typography.Text className="text-sm text-neutral-500">
-                  Nenhum item abaixo do estoque minimo no momento.
+                  Nenhum item abaixo do estoque mínimo no momento.
                 </Typography.Text>
               ) : (
-                lowStockItems.map((item) => (
+                lowStockItems.slice(0, 4).map((item) => (
                   <Card
                     key={item.id}
                     className="border border-neutral-200/70"
@@ -152,21 +128,24 @@ export default function FardamentosOverview() {
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <Typography.Text className="block text-sm font-medium text-neutral-900">
+                        <Typography.Text className="block text-sm font-bold! text-neutral-900">
                           {item.tipoNome}
                         </Typography.Text>
-                        <Typography.Text className="block text-xs text-neutral-500">
-                          {item.variacaoLabel}
-                        </Typography.Text>
-                        <Typography.Text className="block text-xs text-neutral-500">
-                          Unidade: {item.unidade}
-                        </Typography.Text>
+                        <div className="flex gap-2 items-center">
+                          <Typography.Text className="block text-xs! text-neutral-500!">
+                            {item.variacaoLabel}
+                          </Typography.Text>
+                          <Divider vertical={true} plain={true} />
+                          <Typography.Text className="block text-xs! text-neutral-500!">
+                            Unidade: {item.unidade}
+                          </Typography.Text>
+                        </div>
                       </div>
                       <div className="text-right">
                         <Typography.Text className="block text-sm font-semibold text-red-600">
                           {item.total - item.reservado} disponiveis
                         </Typography.Text>
-                        <Typography.Text className="block text-xs text-neutral-500">
+                        <Typography.Text className="block text-xs! text-neutral-500!">
                           {item.reservado} reservados
                         </Typography.Text>
                       </div>
@@ -178,17 +157,22 @@ export default function FardamentosOverview() {
           </SectionCard>
 
           <SectionCard
-            title="Atalhos rapidos"
-            description="Navegue para as telas principais do catalogo."
-            actions={<Input placeholder="Buscar unidade" />}
+            title="Atalhos rápidos"
+            description="Navegue para as telas principais do catálogo."
           >
             <div className="flex flex-col gap-2">
               {[
-                { label: "Cadastro de unidades", href: "/fardamentos/unidades" },
+                {
+                  label: "Cadastro de unidades",
+                  href: "/fardamentos/unidades",
+                },
                 { label: "Cadastro de tipos", href: "/fardamentos/tipos" },
-                { label: "Variacoes e tamanhos", href: "/fardamentos/variacoes" },
+                {
+                  label: "Variações e tamanhos",
+                  href: "/fardamentos/variacoes",
+                },
                 { label: "Controle de estoque", href: "/fardamentos/estoque" },
-                { label: "Movimentacoes", href: "/fardamentos/movimentacoes" },
+                { label: "Movimentações", href: "/fardamentos/movimentacoes" },
               ].map((item) => (
                 <Link
                   key={item.label}
@@ -204,7 +188,7 @@ export default function FardamentosOverview() {
 
         <SectionCard
           title="Avarias recentes"
-          description="Ultimos registros de avarias e ajustes realizados."
+          description="Últimos registros de avarias e ajustes realizados."
           actions={
             <Link href="/fardamentos/avarias">
               <Button type="primary">Ver avarias</Button>
@@ -221,13 +205,13 @@ export default function FardamentosOverview() {
               </Typography.Text>
             </Card>
           </div>
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
             {avarias.length === 0 ? (
               <Typography.Text className="text-sm text-neutral-500">
                 Nenhuma avaria registrada ainda.
               </Typography.Text>
             ) : (
-              avarias.map((avaria) => (
+              avarias.slice(0, 4).map((avaria) => (
                 <Card
                   key={avaria.id}
                   className="border border-neutral-200/70"
