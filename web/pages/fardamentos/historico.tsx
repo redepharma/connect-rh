@@ -34,6 +34,7 @@ import type {
 } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import DefaultLayout from "@/layouts/default";
 
 const { RangePicker } = DatePicker;
 
@@ -300,181 +301,186 @@ export default function HistoricoMovimentacoesPage() {
   );
 
   return (
-    <FardamentosShell
-      title="Historico"
-      description="Historico de movimentacoes e termos gerados."
-      actions={
-        <Space>
-          <Button
-            onClick={() => {
-              setFilters({ ...filters });
-              setPage(1);
-            }}
-          >
-            Atualizar
-          </Button>
-        </Space>
-      }
-    >
-      <SectionCard
-        title="Filtros"
-        description="Refine por colaborador, unidade, status e periodo."
+    <DefaultLayout>
+      <FardamentosShell
+        title="Historico"
+        description="Historico de movimentacoes e termos gerados."
         actions={
           <Space>
-            <Input
-              placeholder="Buscar colaborador"
-              value={filters.q}
-              onChange={(e) => {
-                setFilters({ ...filters, q: e.target.value });
+            <Button
+              onClick={() => {
+                setFilters({ ...filters });
                 setPage(1);
               }}
-              allowClear
-            />
-            <Select
-              placeholder="Unidade"
-              allowClear
-              value={filters.unidadeId}
-              onChange={(value) => {
-                setFilters({ ...filters, unidadeId: value });
-                setPage(1);
-              }}
-              showSearch
-              onSearch={(value) => {
-                setUnidadesQuery(value);
-                setUnidadesOffset(0);
-                setUnidadesHasMore(true);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreUnidades();
-                }
-              }}
-              filterOption={false}
-              loading={unidadesLoading}
-              options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
-              style={{ minWidth: 180 }}
-            />
-            <Select
-              placeholder="Tipo"
-              allowClear
-              value={filters.tipo}
-              onChange={(value) => {
-                setFilters({ ...filters, tipo: value });
-                setPage(1);
-              }}
-              options={[
-                { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
-                { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
-              ]}
-              style={{ minWidth: 160 }}
-            />
-            <Select
-              placeholder="Status"
-              allowClear
-              value={filters.status}
-              onChange={(value) => {
-                setFilters({ ...filters, status: value });
-                setPage(1);
-              }}
-              options={[
-                { label: "Separado", value: MovimentacaoStatus.SEPARADO },
-                { label: "Em transito", value: MovimentacaoStatus.EM_TRANSITO },
-                { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
-                { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
-              ]}
-              style={{ minWidth: 160 }}
-            />
-            <RangePicker
-              onChange={(dates) => {
-                setFilters({
-                  ...filters,
-                  startDate: dates?.[0]?.toISOString(),
-                  endDate: dates?.[1]?.toISOString(),
-                });
-                setPage(1);
-              }}
-            />
+            >
+              Atualizar
+            </Button>
           </Space>
         }
       >
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={data}
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (nextPage) => setPage(nextPage),
-            showSizeChanger: false,
-            showTotal: (value) => `Total: ${value}`,
-          }}
-        />
-      </SectionCard>
+        <SectionCard
+          title="Filtros"
+          description="Refine por colaborador, unidade, status e periodo."
+          actions={
+            <Space>
+              <Input
+                placeholder="Buscar colaborador"
+                value={filters.q}
+                onChange={(e) => {
+                  setFilters({ ...filters, q: e.target.value });
+                  setPage(1);
+                }}
+                allowClear
+              />
+              <Select
+                placeholder="Unidade"
+                allowClear
+                value={filters.unidadeId}
+                onChange={(value) => {
+                  setFilters({ ...filters, unidadeId: value });
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setUnidadesQuery(value);
+                  setUnidadesOffset(0);
+                  setUnidadesHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreUnidades();
+                  }
+                }}
+                filterOption={false}
+                loading={unidadesLoading}
+                options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
+                style={{ minWidth: 180 }}
+              />
+              <Select
+                placeholder="Tipo"
+                allowClear
+                value={filters.tipo}
+                onChange={(value) => {
+                  setFilters({ ...filters, tipo: value });
+                  setPage(1);
+                }}
+                options={[
+                  { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
+                  { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
+                ]}
+                style={{ minWidth: 160 }}
+              />
+              <Select
+                placeholder="Status"
+                allowClear
+                value={filters.status}
+                onChange={(value) => {
+                  setFilters({ ...filters, status: value });
+                  setPage(1);
+                }}
+                options={[
+                  { label: "Separado", value: MovimentacaoStatus.SEPARADO },
+                  {
+                    label: "Em transito",
+                    value: MovimentacaoStatus.EM_TRANSITO,
+                  },
+                  { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
+                  { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
+                ]}
+                style={{ minWidth: 160 }}
+              />
+              <RangePicker
+                onChange={(dates) => {
+                  setFilters({
+                    ...filters,
+                    startDate: dates?.[0]?.toISOString(),
+                    endDate: dates?.[1]?.toISOString(),
+                  });
+                  setPage(1);
+                }}
+              />
+            </Space>
+          }
+        >
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (nextPage) => setPage(nextPage),
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }}
+          />
+        </SectionCard>
 
-      <Modal
-        open={termosOpen}
-        onCancel={() => {
-          setTermosOpen(false);
-          setMovSelecionada(null);
-          setTermos([]);
-        }}
-        title="Termos da movimentacao"
-        width={760}
-        styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
-        footer={
-          <Space>
-            <Button
-              onClick={() => {
-                setTermosOpen(false);
-                setMovSelecionada(null);
-                setTermos([]);
-              }}
-            >
-              Fechar
-            </Button>
-            <Button
-              onClick={() => {
-                const ultimo = termos[0];
-                if (ultimo) {
-                  void handleAbrir(ultimo.id);
-                }
-              }}
-              disabled={!termos.length}
-            >
-              Abrir ultimo termo
-            </Button>
-            <Button
-              type="primary"
-              loading={termosLoading}
-              onClick={handleGerarTermo}
-            >
-              Gerar termo
-            </Button>
-          </Space>
-        }
-      >
-        <Typography.Text type="secondary">
-          {movSelecionada
-            ? `${movSelecionada.colaboradorNome} - ${movSelecionada.unidadeNome}`
-            : "Selecione uma movimentacao para ver os termos."}
-        </Typography.Text>
-        <Table
-          className="mt-4"
-          rowKey="id"
-          columns={termoColumns}
-          dataSource={termos}
-          loading={termosLoading}
-          scroll={{ y: 300 }}
-          pagination={false}
-        />
-      </Modal>
-    </FardamentosShell>
+        <Modal
+          open={termosOpen}
+          onCancel={() => {
+            setTermosOpen(false);
+            setMovSelecionada(null);
+            setTermos([]);
+          }}
+          title="Termos da movimentacao"
+          width={760}
+          styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
+          footer={
+            <Space>
+              <Button
+                onClick={() => {
+                  setTermosOpen(false);
+                  setMovSelecionada(null);
+                  setTermos([]);
+                }}
+              >
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  const ultimo = termos[0];
+                  if (ultimo) {
+                    void handleAbrir(ultimo.id);
+                  }
+                }}
+                disabled={!termos.length}
+              >
+                Abrir ultimo termo
+              </Button>
+              <Button
+                type="primary"
+                loading={termosLoading}
+                onClick={handleGerarTermo}
+              >
+                Gerar termo
+              </Button>
+            </Space>
+          }
+        >
+          <Typography.Text type="secondary">
+            {movSelecionada
+              ? `${movSelecionada.colaboradorNome} - ${movSelecionada.unidadeNome}`
+              : "Selecione uma movimentacao para ver os termos."}
+          </Typography.Text>
+          <Table
+            className="mt-4"
+            rowKey="id"
+            columns={termoColumns}
+            dataSource={termos}
+            loading={termosLoading}
+            scroll={{ y: 300 }}
+            pagination={false}
+          />
+        </Modal>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }
 

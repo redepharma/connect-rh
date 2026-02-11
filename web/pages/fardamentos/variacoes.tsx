@@ -1,19 +1,10 @@
-import {
-  Alert,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-} from "antd";
+import { Button, Form, Input, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { VariacaoTable } from "@/modules/fardamentos/components/variacao-table";
 import { VariacaoModal } from "@/modules/fardamentos/components/variacao-modal";
-import type { Variacao } from "@/modules/fardamentos/types/fardamentos.types";
+import type { TipoFardamento, Variacao } from "@/modules/fardamentos/types/fardamentos.types";
 import {
   createVariacao,
   deleteVariacao,
@@ -23,7 +14,6 @@ import {
   mapVariacoesToUi,
   updateVariacao,
 } from "@/modules/fardamentos/services/fardamentos.service";
-import type { TipoFardamento } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
 import DefaultLayout from "@/layouts/default";
@@ -180,14 +170,37 @@ export default function VariacoesPage() {
               <Input
                 placeholder="Buscar variacao"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 allowClear
               />
               <Select
                 placeholder="Filtrar tipo"
                 value={tipoId}
                 allowClear
-                onChange={(value) => setTipoId(value)}
+                onChange={(value) => {
+                  setTipoId(value);
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setTiposQuery(value);
+                  setTiposOffset(0);
+                  setTiposHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreTipos();
+                  }
+                }}
+                filterOption={false}
+                loading={tiposLoading}
                 options={tipos.map((tipo) => ({
                   label: tipo.nome,
                   value: tipo.id,
@@ -197,75 +210,28 @@ export default function VariacoesPage() {
             </Space>
           }
         >
-          {error ? (
-            <Alert
-              type="error"
-              message="Falha ao carregar variacoes"
-              description={error}
-              showIcon
-            />
-          ) : (
-            <VariacaoTable data={data} loading={loading} />
-          )}
-          {!error ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {data.map((variacao) => (
-                <div
-                  key={variacao.id}
-                  className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-                >
-                  <span>{variacao.tipoNome}</span>
-                  <Button size="small" onClick={() => openEdit(variacao)}>
-                    Editar
-                  </Button>
-                  <Popconfirm
-                    title="Remover variacao?"
-                    okText="Sim"
-                    cancelText="Nao"
-                    onConfirm={() => void handleDelete(variacao)}
-                  >
-                    <Button size="small" danger>
-                      Remover
-                    </Button>
-                  </Popconfirm>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <VariacaoTable
+            data={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (nextPage) => setPage(nextPage),
+            }}
+            onEdit={openEdit}
+            onDelete={(variacao) => void handleDelete(variacao)}
+          />
         </SectionCard>
-        <Modal
+        <VariacaoModal
           open={open}
+          editing={editing}
+          form={form}
+          saving={saving}
+          tipos={tipos}
           onCancel={() => setOpen(false)}
           onOk={handleSave}
-          confirmLoading={saving}
-          title={editing ? "Editar variacao" : "Nova variacao"}
-        >
-          <Form layout="vertical" form={form}>
-            <Form.Item name="tipoId" label="Tipo" rules={[{ required: true }]}>
-              <Select
-                placeholder="Selecione o tipo"
-                options={tipos.map((tipo) => ({
-                  label: tipo.nome,
-                  value: tipo.id,
-                }))}
-              />
-            </Form.Item>
-            <Form.Item
-              name="tamanho"
-              label="Tamanho"
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="Ex: P, M, G, 40" />
-            </Form.Item>
-            <Form.Item
-              name="genero"
-              label="Genero"
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="Ex: Masculino, Feminino, Unissex" />
-            </Form.Item>
-          </Form>
-        </Modal>
+        />
       </FardamentosShell>
     </DefaultLayout>
   );

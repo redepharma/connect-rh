@@ -1,19 +1,10 @@
-import {
-  Alert,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-} from "antd";
+import { Button, Form, Input, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { TipoTable } from "@/modules/fardamentos/components/tipo-table";
 import { TipoModal } from "@/modules/fardamentos/components/tipo-modal";
-import type { TipoFardamento } from "@/modules/fardamentos/types/fardamentos.types";
+import type { TipoFardamento, Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import {
   createTipo,
   deleteTipo,
@@ -22,7 +13,6 @@ import {
   mapTiposToUi,
   updateTipo,
 } from "@/modules/fardamentos/services/fardamentos.service";
-import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
 import DefaultLayout from "@/layouts/default";
@@ -179,14 +169,37 @@ export default function TiposPage() {
               <Input
                 placeholder="Buscar tipo"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 allowClear
               />
               <Select
                 placeholder="Filtrar unidade"
                 value={unidadeId}
                 allowClear
-                onChange={(value) => setUnidadeId(value)}
+                onChange={(value) => {
+                  setUnidadeId(value);
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setUnidadesQuery(value);
+                  setUnidadesOffset(0);
+                  setUnidadesHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreUnidades();
+                  }
+                }}
+                filterOption={false}
+                loading={unidadesLoading}
                 options={unidades.map((unit) => ({
                   label: unit.nome,
                   value: unit.id,
@@ -196,71 +209,28 @@ export default function TiposPage() {
             </Space>
           }
         >
-          {error ? (
-            <Alert
-              type="error"
-              message="Falha ao carregar tipos"
-              description={error}
-              showIcon
-            />
-          ) : (
-            <TipoTable data={data} loading={loading} />
-          )}
-          {!error ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {data.map((tipo) => (
-                <div
-                  key={tipo.id}
-                  className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-                >
-                  <span>{tipo.nome}</span>
-                  <Button size="small" onClick={() => openEdit(tipo)}>
-                    Editar
-                  </Button>
-                  <Popconfirm
-                    title="Remover tipo?"
-                    okText="Sim"
-                    cancelText="Nao"
-                    onConfirm={() => void handleDelete(tipo)}
-                  >
-                    <Button size="small" danger>
-                      Remover
-                    </Button>
-                  </Popconfirm>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <TipoTable
+            data={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (nextPage) => setPage(nextPage),
+            }}
+            onEdit={openEdit}
+            onDelete={(tipo) => void handleDelete(tipo)}
+          />
         </SectionCard>
-        <Modal
+        <TipoModal
           open={open}
+          editing={editing}
+          form={form}
+          saving={saving}
+          unidades={unidades}
           onCancel={() => setOpen(false)}
           onOk={handleSave}
-          confirmLoading={saving}
-          title={editing ? "Editar tipo" : "Novo tipo"}
-        >
-          <Form layout="vertical" form={form}>
-            <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
-              <Input placeholder="Ex: Camisa Polo" />
-            </Form.Item>
-            <Form.Item
-              name="unidadesIds"
-              label="Unidades"
-              rules={[
-                { required: true, message: "Selecione ao menos uma unidade" },
-              ]}
-            >
-              <Select
-                mode="multiple"
-                placeholder="Selecione unidades"
-                options={unidades.map((unit) => ({
-                  label: unit.nome,
-                  value: unit.id,
-                }))}
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
+        />
       </FardamentosShell>
     </DefaultLayout>
   );

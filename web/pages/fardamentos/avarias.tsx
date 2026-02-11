@@ -1,4 +1,13 @@
-import { Button, DatePicker, Empty, Input, Select, Space, Table, Tag } from "antd";
+import {
+  Button,
+  DatePicker,
+  Empty,
+  Input,
+  Select,
+  Space,
+  Table,
+  Tag,
+} from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -16,6 +25,7 @@ import {
 import { colaboradoresMock } from "@/modules/fardamentos/types/fardamentos.mock";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import DefaultLayout from "@/layouts/default";
 
 const { RangePicker } = DatePicker;
 
@@ -202,158 +212,160 @@ export default function AvariasPage() {
   ];
 
   return (
-    <FardamentosShell
-      title="Avarias"
-      description="Acompanhe itens avariados e ajustes aplicados no estoque."
-    >
-      <SectionCard
-        title="Registros de avarias"
-        description="Consulte as avarias registradas em devolucoes."
-        actions={
-          <Space wrap>
-            <Input
-              placeholder="Buscar colaborador, unidade ou variacao"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(1);
-              }}
-              allowClear
-            />
-            <Select
-              placeholder="Colaborador"
-              allowClear
-              showSearch
-              onSearch={() => null}
-              onChange={(value) => {
-                setColaboradorId(value);
-                setPage(1);
-              }}
-              value={colaboradorId}
-              filterOption={(input, option) =>
-                String(option?.label ?? "")
-                  .toLowerCase()
-                  .includes(input.toLowerCase())
-              }
-              options={colaboradoresMock.map((colab) => ({
-                label: colab.nome,
-                value: colab.id,
-              }))}
-              style={{ minWidth: 200 }}
-            />
-            <Select
-              placeholder="Filtrar unidade"
-              value={unidadeId}
-              allowClear
-              showSearch
-              onSearch={(value) => {
-                setUnidadesQuery(value);
-                setUnidadesOffset(0);
-                setUnidadesHasMore(true);
-              }}
-              onChange={(value) => {
-                setUnidadeId(value);
-                setPage(1);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreUnidades();
-                }
-              }}
-              loading={unidadesLoading}
-              options={unidades.map((unidade) => ({
-                label: unidade.nome,
-                value: unidade.id,
-              }))}
-              style={{ minWidth: 200 }}
-            />
-            <Select
-              placeholder="Filtrar tipo"
-              value={tipoId}
-              allowClear
-              showSearch
-              onSearch={(value) => {
-                setTiposQuery(value);
-                setTiposOffset(0);
-                setTiposHasMore(true);
-              }}
-              onChange={(value) => {
-                setTipoId(value);
-                setPage(1);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreTipos();
-                }
-              }}
-              loading={tiposLoading}
-              options={tipos.map((tipo) => ({
-                label: tipo.nome,
-                value: tipo.id,
-              }))}
-              style={{ minWidth: 200 }}
-            />
-            <RangePicker
-              onChange={(dates, dateStrings) => {
-                const start = dateStrings[0] || "";
-                const end = dateStrings[1] || "";
-                setPeriodo(start && end ? [start, end] : null);
-                setPage(1);
-              }}
-            />
-            <Button
-              onClick={() => {
-                setQuery("");
-                setUnidadeId(undefined);
-                setTipoId(undefined);
-                setColaboradorId(undefined);
-                setPeriodo(null);
-                setPage(1);
-              }}
-            >
-              Limpar filtros
-            </Button>
-          </Space>
-        }
+    <DefaultLayout>
+      <FardamentosShell
+        title="Avarias"
+        description="Acompanhe itens avariados e ajustes aplicados no estoque."
       >
-        <Space className="mb-3" wrap>
-          <Tag color="blue">{total} avarias</Tag>
-          <Tag color="purple">{totalQuantidadePagina} itens nesta pagina</Tag>
-          {filtrosAtivos ? <Tag>Filtros ativos</Tag> : null}
-        </Space>
-        <Table
-          rowKey="id"
-          loading={loading}
-          dataSource={data}
-          columns={columns}
-          locale={{
-            emptyText: (
-              <Empty
-                description={
-                  filtrosAtivos
-                    ? "Nenhuma avaria encontrada com os filtros atuais."
-                    : "Nenhuma avaria registrada ainda."
-                }
+        <SectionCard
+          title="Registros de avarias"
+          description="Consulte as avarias registradas em devolucoes."
+          actions={
+            <Space wrap>
+              <Input
+                placeholder="Buscar colaborador, unidade ou variacao"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
+                allowClear
               />
-            ),
-          }}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (next) => setPage(next),
-            showTotal: (value) => `${value} avarias`,
-          }}
-        />
-      </SectionCard>
-    </FardamentosShell>
+              <Select
+                placeholder="Colaborador"
+                allowClear
+                showSearch
+                onSearch={() => null}
+                onChange={(value) => {
+                  setColaboradorId(value);
+                  setPage(1);
+                }}
+                value={colaboradorId}
+                filterOption={(input, option) =>
+                  String(option?.label ?? "")
+                    .toLowerCase()
+                    .includes(input.toLowerCase())
+                }
+                options={colaboradoresMock.map((colab) => ({
+                  label: colab.nome,
+                  value: colab.id,
+                }))}
+                style={{ minWidth: 200 }}
+              />
+              <Select
+                placeholder="Filtrar unidade"
+                value={unidadeId}
+                allowClear
+                showSearch
+                onSearch={(value) => {
+                  setUnidadesQuery(value);
+                  setUnidadesOffset(0);
+                  setUnidadesHasMore(true);
+                }}
+                onChange={(value) => {
+                  setUnidadeId(value);
+                  setPage(1);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreUnidades();
+                  }
+                }}
+                loading={unidadesLoading}
+                options={unidades.map((unidade) => ({
+                  label: unidade.nome,
+                  value: unidade.id,
+                }))}
+                style={{ minWidth: 200 }}
+              />
+              <Select
+                placeholder="Filtrar tipo"
+                value={tipoId}
+                allowClear
+                showSearch
+                onSearch={(value) => {
+                  setTiposQuery(value);
+                  setTiposOffset(0);
+                  setTiposHasMore(true);
+                }}
+                onChange={(value) => {
+                  setTipoId(value);
+                  setPage(1);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreTipos();
+                  }
+                }}
+                loading={tiposLoading}
+                options={tipos.map((tipo) => ({
+                  label: tipo.nome,
+                  value: tipo.id,
+                }))}
+                style={{ minWidth: 200 }}
+              />
+              <RangePicker
+                onChange={(dates, dateStrings) => {
+                  const start = dateStrings[0] || "";
+                  const end = dateStrings[1] || "";
+                  setPeriodo(start && end ? [start, end] : null);
+                  setPage(1);
+                }}
+              />
+              <Button
+                onClick={() => {
+                  setQuery("");
+                  setUnidadeId(undefined);
+                  setTipoId(undefined);
+                  setColaboradorId(undefined);
+                  setPeriodo(null);
+                  setPage(1);
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </Space>
+          }
+        >
+          <Space className="mb-3" wrap>
+            <Tag color="blue">{total} avarias</Tag>
+            <Tag color="purple">{totalQuantidadePagina} itens nesta pagina</Tag>
+            {filtrosAtivos ? <Tag>Filtros ativos</Tag> : null}
+          </Space>
+          <Table
+            rowKey="id"
+            loading={loading}
+            dataSource={data}
+            columns={columns}
+            locale={{
+              emptyText: (
+                <Empty
+                  description={
+                    filtrosAtivos
+                      ? "Nenhuma avaria encontrada com os filtros atuais."
+                      : "Nenhuma avaria registrada ainda."
+                  }
+                />
+              ),
+            }}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (next) => setPage(next),
+              showTotal: (value) => `${value} avarias`,
+            }}
+          />
+        </SectionCard>
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }

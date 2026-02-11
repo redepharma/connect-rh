@@ -3,18 +3,18 @@ import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { EstoqueTable } from "@/modules/fardamentos/components/estoque-table";
-import type { EstoqueItem } from "@/modules/fardamentos/types/fardamentos.types";
+import type {
+  EstoqueItem,
+  TipoFardamento,
+  Unidade,
+} from "@/modules/fardamentos/types/fardamentos.types";
 import {
   fetchEstoque,
   fetchTipos,
   fetchUnidades,
   mapEstoqueToUi,
+  mapTiposToUi,
 } from "@/modules/fardamentos/services/fardamentos.service";
-import type {
-  Unidade,
-  TipoFardamento,
-} from "@/modules/fardamentos/types/fardamentos.types";
-import { mapTiposToUi } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
 import DefaultLayout from "@/layouts/default";
@@ -22,21 +22,27 @@ import DefaultLayout from "@/layouts/default";
 export default function EstoquePage() {
   const [data, setData] = useState<EstoqueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query);
   const [unidadeId, setUnidadeId] = useState<string | undefined>();
   const [tipoId, setTipoId] = useState<string | undefined>();
   const [baixoEstoque, setBaixoEstoque] = useState(false);
+
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [tipos, setTipos] = useState<TipoFardamento[]>([]);
+
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [total, setTotal] = useState(0);
+
   const [unidadesQuery, setUnidadesQuery] = useState("");
   const debouncedUnidadesQuery = useDebounce(unidadesQuery);
   const [unidadesOffset, setUnidadesOffset] = useState(0);
   const [unidadesHasMore, setUnidadesHasMore] = useState(true);
   const [unidadesLoading, setUnidadesLoading] = useState(false);
+
   const [tiposQuery, setTiposQuery] = useState("");
   const debouncedTiposQuery = useDebounce(tiposQuery);
   const [tiposOffset, setTiposOffset] = useState(0);
@@ -48,6 +54,7 @@ export default function EstoquePage() {
 
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [estoqueResult, unidadesResult, tiposResult] = await Promise.all([
           fetchEstoque({
@@ -69,6 +76,7 @@ export default function EstoquePage() {
             limit: 10,
           }),
         ]);
+
         if (active) {
           setData(mapEstoqueToUi(estoqueResult.data));
           setTotal(estoqueResult.total);
@@ -80,7 +88,14 @@ export default function EstoquePage() {
           setTiposHasMore(tiposResult.data.length < tiposResult.total);
         }
       } catch (err) {
-        if (active) toaster.erro("Erro ao carregar estoque", err);
+        if (active) {
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Nao foi possivel carregar o estoque.";
+          setError(message);
+          toaster.erro("Erro ao carregar estoque", err);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -156,14 +171,37 @@ export default function EstoquePage() {
               <Input
                 placeholder="Buscar item"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 allowClear
               />
               <Select
                 placeholder="Filtrar unidade"
                 value={unidadeId}
                 allowClear
-                onChange={(value) => setUnidadeId(value)}
+                onChange={(value) => {
+                  setUnidadeId(value);
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setUnidadesQuery(value);
+                  setUnidadesOffset(0);
+                  setUnidadesHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreUnidades();
+                  }
+                }}
+                filterOption={false}
+                loading={unidadesLoading}
                 options={unidades.map((unit) => ({
                   label: unit.nome,
                   value: unit.id,
@@ -174,7 +212,27 @@ export default function EstoquePage() {
                 placeholder="Filtrar tipo"
                 value={tipoId}
                 allowClear
-                onChange={(value) => setTipoId(value)}
+                onChange={(value) => {
+                  setTipoId(value);
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setTiposQuery(value);
+                  setTiposOffset(0);
+                  setTiposHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreTipos();
+                  }
+                }}
+                filterOption={false}
+                loading={tiposLoading}
                 options={tipos.map((tipo) => ({
                   label: tipo.nome,
                   value: tipo.id,
@@ -183,7 +241,10 @@ export default function EstoquePage() {
               />
               <Switch
                 checked={baixoEstoque}
-                onChange={(checked) => setBaixoEstoque(checked)}
+                onChange={(checked) => {
+                  setBaixoEstoque(checked);
+                  setPage(1);
+                }}
                 checkedChildren="Baixo estoque"
                 unCheckedChildren="Todos"
               />
@@ -198,7 +259,16 @@ export default function EstoquePage() {
               showIcon
             />
           ) : (
-            <EstoqueTable data={data} loading={loading} />
+            <EstoqueTable
+              data={data}
+              loading={loading}
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: (nextPage) => setPage(nextPage),
+              }}
+            />
           )}
         </SectionCard>
       </FardamentosShell>

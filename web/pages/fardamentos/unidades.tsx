@@ -1,13 +1,4 @@
-import {
-  Alert,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-} from "antd";
+import { Button, Form, Input, Space } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -20,16 +11,9 @@ import {
   fetchUnidades,
   updateUnidade,
 } from "@/modules/fardamentos/services/fardamentos.service";
-import { parseApiError } from "@/shared/error-handlers/api-errors";
-import DefaultLayout from "@/layouts/default";
-import {
-  createUnidade,
-  deleteUnidade,
-  fetchUnidades,
-  updateUnidade,
-} from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
+import DefaultLayout from "@/layouts/default";
 
 export default function UnidadesPage() {
   const [data, setData] = useState<Unidade[]>([]);
@@ -145,72 +129,36 @@ export default function UnidadesPage() {
               <Input
                 placeholder="Buscar unidade"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(1);
+                }}
                 allowClear
               />
             </Space>
           }
         >
-          {error ? (
-            <Alert
-              type="error"
-              message="Falha ao carregar unidades"
-              description={error}
-              showIcon
-            />
-          ) : (
-            <UnitTable data={data} loading={loading} />
-          )}
-          {!error ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {data.map((unit) => (
-                <div
-                  key={unit.id}
-                  className="flex items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600"
-                >
-                  <span>{unit.nome}</span>
-                  <Button size="small" onClick={() => openEdit(unit)}>
-                    Editar
-                  </Button>
-                  <Popconfirm
-                    title="Remover unidade?"
-                    okText="Sim"
-                    cancelText="Nao"
-                    onConfirm={() => void handleDelete(unit)}
-                  >
-                    <Button size="small" danger>
-                      Remover
-                    </Button>
-                  </Popconfirm>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          <UnitTable
+            data={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (nextPage) => setPage(nextPage),
+            }}
+            onEdit={openEdit}
+            onDelete={(unit) => void handleDelete(unit)}
+          />
         </SectionCard>
-        <Modal
+        <UnidadeModal
           open={open}
+          editing={editing}
+          form={form}
+          saving={saving}
           onCancel={() => setOpen(false)}
           onOk={handleSave}
-          confirmLoading={saving}
-          title={editing ? "Editar unidade" : "Nova unidade"}
-        >
-          <Form layout="vertical" form={form}>
-            <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
-              <Input placeholder="Ex: Loja Centro" />
-            </Form.Item>
-            <Form.Item name="descricao" label="Descricao">
-              <Input placeholder="Descricao opcional" />
-            </Form.Item>
-            <Form.Item name="ativo" label="Status" initialValue={true}>
-              <Select
-                options={[
-                  { label: "Ativa", value: true },
-                  { label: "Inativa", value: false },
-                ]}
-              />
-            </Form.Item>
-          </Form>
-        </Modal>
+        />
       </FardamentosShell>
     </DefaultLayout>
   );

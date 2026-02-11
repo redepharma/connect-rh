@@ -50,6 +50,7 @@ import type {
   CreateAvariaItem,
 } from "@/modules/fardamentos/types/avarias.types";
 import { colaboradoresMock } from "@/modules/fardamentos/types/fardamentos.mock";
+import DefaultLayout from "@/layouts/default";
 
 const { RangePicker } = DatePicker;
 
@@ -628,197 +629,144 @@ export default function MovimentacoesPage() {
   ];
 
   return (
-    <FardamentosShell
-      title="Movimentacoes"
-      description="Gerencie entregas e devolucoes com reserva e baixa de estoque."
-      actions={
-        <Space>
-          <Button type="primary" onClick={() => setOpenEntrega(true)}>
-            Nova entrega
-          </Button>
-          <Button onClick={() => setOpenDevolucao(true)}>Nova devolucao</Button>
-        </Space>
-      }
-    >
-      <SectionCard
-        title="Filtros"
-        description="Refine por colaborador, unidade, status e periodo."
+    <DefaultLayout>
+      <FardamentosShell
+        title="Movimentacoes"
+        description="Gerencie entregas e devolucoes com reserva e baixa de estoque."
         actions={
           <Space>
-            <Input
-              placeholder="Buscar colaborador"
-              value={filters.q}
-              onChange={(e) => {
-                setFilters({ ...filters, q: e.target.value });
-                setPage(1);
-              }}
-              allowClear
-            />
-            <Select
-              placeholder="Unidade"
-              allowClear
-              value={filters.unidadeId}
-              onChange={(value) => {
-                setFilters({ ...filters, unidadeId: value });
-                setPage(1);
-              }}
-              showSearch
-              onSearch={(value) => {
-                setUnidadesQuery(value);
-                setUnidadesOffset(0);
-                setUnidadesHasMore(true);
-              }}
-              onPopupScroll={(event) => {
-                const target = event.target as HTMLDivElement;
-                if (
-                  target.scrollTop + target.offsetHeight >=
-                  target.scrollHeight - 16
-                ) {
-                  void loadMoreUnidades();
-                }
-              }}
-              filterOption={false}
-              loading={unidadesLoading}
-              options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
-              style={{ minWidth: 180 }}
-            />
-            <Select
-              placeholder="Tipo"
-              allowClear
-              value={filters.tipo}
-              onChange={(value) => {
-                setFilters({ ...filters, tipo: value });
-                setPage(1);
-              }}
-              options={[
-                { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
-                { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
-              ]}
-              style={{ minWidth: 160 }}
-            />
-            <Select
-              placeholder="Status"
-              allowClear
-              value={filters.status}
-              onChange={(value) => {
-                setFilters({ ...filters, status: value });
-                setPage(1);
-              }}
-              options={[
-                { label: "Separado", value: MovimentacaoStatus.SEPARADO },
-                { label: "Em transito", value: MovimentacaoStatus.EM_TRANSITO },
-                { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
-                { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
-              ]}
-              style={{ minWidth: 160 }}
-            />
-            <RangePicker
-              onChange={(dates) => {
-                setFilters({
-                  ...filters,
-                  startDate: dates?.[0]?.toISOString(),
-                  endDate: dates?.[1]?.toISOString(),
-                });
-                setPage(1);
-              }}
-            />
+            <Button type="primary" onClick={() => setOpenEntrega(true)}>
+              Nova entrega
+            </Button>
+            <Button onClick={() => setOpenDevolucao(true)}>
+              Nova devolucao
+            </Button>
           </Space>
         }
       >
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={data}
-          loading={loading}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (nextPage) => setPage(nextPage),
-            showSizeChanger: false,
-            showTotal: (value) => `Total: ${value}`,
-          }}
-        />
-      </SectionCard>
-
-      <MovimentacaoEntregaWizard
-        open={openEntrega}
-        saving={saving}
-        step={stepEntrega}
-        setStep={setStepEntrega}
-        form={formEntrega}
-        colaboradores={colaboradoresMock}
-        unidades={unidades}
-        variacoes={variacoes}
-        variacaoOptionsFiltradas={variacaoOptionsFiltradas}
-        tamanhosDisponiveis={tamanhosDisponiveis}
-        estoqueEntrega={estoqueEntrega}
-        entregaUnidadeId={entregaUnidadeId}
-        setEntregaUnidadeId={async (value) => {
-          setEntregaUnidadeId(value);
-          formEntrega.setFieldValue("unidadeId", value ?? undefined);
-          if (value) {
-            const estoqueResult = await fetchEstoque({
-              unidadeId: value,
-              offset: 0,
-              limit: 10,
-            });
-            const estoqueUi = mapEstoqueToUi(estoqueResult.data);
-            setEstoqueEntrega(
-              estoqueUi.map((item) => ({
-                variacaoId: item.variacaoId,
-                total: item.total,
-                reservado: item.reservado,
-              })),
-            );
-          } else {
-            setEstoqueEntrega([]);
+        <SectionCard
+          title="Filtros"
+          description="Refine por colaborador, unidade, status e periodo."
+          actions={
+            <Space>
+              <Input
+                placeholder="Buscar colaborador"
+                value={filters.q}
+                onChange={(e) => {
+                  setFilters({ ...filters, q: e.target.value });
+                  setPage(1);
+                }}
+                allowClear
+              />
+              <Select
+                placeholder="Unidade"
+                allowClear
+                value={filters.unidadeId}
+                onChange={(value) => {
+                  setFilters({ ...filters, unidadeId: value });
+                  setPage(1);
+                }}
+                showSearch
+                onSearch={(value) => {
+                  setUnidadesQuery(value);
+                  setUnidadesOffset(0);
+                  setUnidadesHasMore(true);
+                }}
+                onPopupScroll={(event) => {
+                  const target = event.target as HTMLDivElement;
+                  if (
+                    target.scrollTop + target.offsetHeight >=
+                    target.scrollHeight - 16
+                  ) {
+                    void loadMoreUnidades();
+                  }
+                }}
+                filterOption={false}
+                loading={unidadesLoading}
+                options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
+                style={{ minWidth: 180 }}
+              />
+              <Select
+                placeholder="Tipo"
+                allowClear
+                value={filters.tipo}
+                onChange={(value) => {
+                  setFilters({ ...filters, tipo: value });
+                  setPage(1);
+                }}
+                options={[
+                  { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
+                  { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
+                ]}
+                style={{ minWidth: 160 }}
+              />
+              <Select
+                placeholder="Status"
+                allowClear
+                value={filters.status}
+                onChange={(value) => {
+                  setFilters({ ...filters, status: value });
+                  setPage(1);
+                }}
+                options={[
+                  { label: "Separado", value: MovimentacaoStatus.SEPARADO },
+                  {
+                    label: "Em transito",
+                    value: MovimentacaoStatus.EM_TRANSITO,
+                  },
+                  { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
+                  { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
+                ]}
+                style={{ minWidth: 160 }}
+              />
+              <RangePicker
+                onChange={(dates) => {
+                  setFilters({
+                    ...filters,
+                    startDate: dates?.[0]?.toISOString(),
+                    endDate: dates?.[1]?.toISOString(),
+                  });
+                  setPage(1);
+                }}
+              />
+            </Space>
           }
-        }}
-        entregaGenero={entregaGenero}
-        setEntregaGenero={setEntregaGenero}
-        entregaTamanho={entregaTamanho}
-        setEntregaTamanho={setEntregaTamanho}
-        termos={entregaTermos}
-        termosLoading={entregaTermosLoading}
-        unidadesLoading={unidadesLoading}
-        onUnidadesScroll={loadMoreUnidades}
-        onGerarTermo={handleGerarTermoEntrega}
-        onAbrirTermo={handleAbrirTermo}
-        onBaixarTermo={handleBaixarTermo}
-        onColaboradorSelect={(colaborador) => {
-          setEntregaColaborador(colaborador);
-          entregaColaboradorRef.current = colaborador;
-        }}
-        onAdvance={async () => {
-          try {
-            await formEntrega.validateFields(["colaboradorId"]);
-            const colabId = formEntrega.getFieldValue("colaboradorId");
-            const colabNome = formEntrega.getFieldValue("colaboradorNome");
-            if (colabId) {
-              const stored = {
-                id: String(colabId),
-                nome: String(colabNome ?? ""),
-              };
-              setEntregaColaborador(stored);
-              entregaColaboradorRef.current = stored;
-            }
-            const currentUnidadeId =
-              entregaUnidadeId ??
-              formEntrega.getFieldValue("unidadeId") ??
-              unidades[0]?.id;
-            if (!currentUnidadeId) {
-              toaster.alerta(
-                "Unidade indisponivel",
-                "Nenhuma unidade disponivel para carregar o estoque.",
-              );
-              return;
-            }
-            if (currentUnidadeId) {
-              formEntrega.setFieldValue("unidadeId", currentUnidadeId);
-              setEntregaUnidadeId(currentUnidadeId);
+        >
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={data}
+            loading={loading}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (nextPage) => setPage(nextPage),
+              showSizeChanger: false,
+              showTotal: (value) => `Total: ${value}`,
+            }}
+          />
+        </SectionCard>
+
+        <MovimentacaoEntregaWizard
+          open={openEntrega}
+          saving={saving}
+          step={stepEntrega}
+          setStep={setStepEntrega}
+          form={formEntrega}
+          colaboradores={colaboradoresMock}
+          unidades={unidades}
+          variacoes={variacoes}
+          variacaoOptionsFiltradas={variacaoOptionsFiltradas}
+          tamanhosDisponiveis={tamanhosDisponiveis}
+          estoqueEntrega={estoqueEntrega}
+          entregaUnidadeId={entregaUnidadeId}
+          setEntregaUnidadeId={async (value) => {
+            setEntregaUnidadeId(value);
+            formEntrega.setFieldValue("unidadeId", value ?? undefined);
+            if (value) {
               const estoqueResult = await fetchEstoque({
-                unidadeId: currentUnidadeId,
+                unidadeId: value,
                 offset: 0,
                 limit: 10,
               });
@@ -830,119 +778,179 @@ export default function MovimentacoesPage() {
                   reservado: item.reservado,
                 })),
               );
+            } else {
+              setEstoqueEntrega([]);
             }
-            setStepEntrega(1);
-          } catch (err) {
-            const apiError = parseApiError(err);
-            toaster.alerta("Verifique os dados", apiError.message);
-          }
-        }}
-        onConfirm={() => void handleEntrega()}
-        onCancel={() => {
-          setOpenEntrega(false);
-          setStepEntrega(0);
-          setEstoqueEntrega([]);
-          formEntrega.resetFields();
-          setEntregaColaborador(null);
-          entregaColaboradorRef.current = null;
-          setEntregaUnidadeId(null);
-          setEntregaGenero(null);
-          setEntregaTamanho(null);
-          setEntregaMovimentacaoId(null);
-          setEntregaTermos([]);
-        }}
-      />
+          }}
+          entregaGenero={entregaGenero}
+          setEntregaGenero={setEntregaGenero}
+          entregaTamanho={entregaTamanho}
+          setEntregaTamanho={setEntregaTamanho}
+          termos={entregaTermos}
+          termosLoading={entregaTermosLoading}
+          unidadesLoading={unidadesLoading}
+          onUnidadesScroll={loadMoreUnidades}
+          onGerarTermo={handleGerarTermoEntrega}
+          onAbrirTermo={handleAbrirTermo}
+          onBaixarTermo={handleBaixarTermo}
+          onColaboradorSelect={(colaborador) => {
+            setEntregaColaborador(colaborador);
+            entregaColaboradorRef.current = colaborador;
+          }}
+          onAdvance={async () => {
+            try {
+              await formEntrega.validateFields(["colaboradorId"]);
+              const colabId = formEntrega.getFieldValue("colaboradorId");
+              const colabNome = formEntrega.getFieldValue("colaboradorNome");
+              if (colabId) {
+                const stored = {
+                  id: String(colabId),
+                  nome: String(colabNome ?? ""),
+                };
+                setEntregaColaborador(stored);
+                entregaColaboradorRef.current = stored;
+              }
+              const currentUnidadeId =
+                entregaUnidadeId ??
+                formEntrega.getFieldValue("unidadeId") ??
+                unidades[0]?.id;
+              if (!currentUnidadeId) {
+                toaster.alerta(
+                  "Unidade indisponivel",
+                  "Nenhuma unidade disponivel para carregar o estoque.",
+                );
+                return;
+              }
+              if (currentUnidadeId) {
+                formEntrega.setFieldValue("unidadeId", currentUnidadeId);
+                setEntregaUnidadeId(currentUnidadeId);
+                const estoqueResult = await fetchEstoque({
+                  unidadeId: currentUnidadeId,
+                  offset: 0,
+                  limit: 10,
+                });
+                const estoqueUi = mapEstoqueToUi(estoqueResult.data);
+                setEstoqueEntrega(
+                  estoqueUi.map((item) => ({
+                    variacaoId: item.variacaoId,
+                    total: item.total,
+                    reservado: item.reservado,
+                  })),
+                );
+              }
+              setStepEntrega(1);
+            } catch (err) {
+              const apiError = parseApiError(err);
+              toaster.alerta("Verifique os dados", apiError.message);
+            }
+          }}
+          onConfirm={() => void handleEntrega()}
+          onCancel={() => {
+            setOpenEntrega(false);
+            setStepEntrega(0);
+            setEstoqueEntrega([]);
+            formEntrega.resetFields();
+            setEntregaColaborador(null);
+            entregaColaboradorRef.current = null;
+            setEntregaUnidadeId(null);
+            setEntregaGenero(null);
+            setEntregaTamanho(null);
+            setEntregaMovimentacaoId(null);
+            setEntregaTermos([]);
+          }}
+        />
 
-      <MovimentacaoDevolucaoWizard
-        open={openDevolucao}
-        saving={saving}
-        step={stepDevolucao}
-        setStep={setStepDevolucao}
-        form={formDevolucao}
-        colaboradores={colaboradoresMock}
-        unidades={unidades}
-        variacoes={variacoes}
-        variacaoOptionsDevolucao={variacaoOptionsDevolucao}
-        tamanhosDisponiveis={tamanhosDisponiveis}
-        devolucaoUnidadeId={devolucaoUnidadeId}
-        setDevolucaoUnidadeId={async (value) => {
-          setDevolucaoUnidadeId(value);
-          formDevolucao.setFieldValue("unidadeId", value ?? undefined);
-          if (value) {
-            const estoqueResult = await fetchEstoque({
-              unidadeId: value,
-              offset: 0,
-              limit: 10,
-            });
-            const estoqueUi = mapEstoqueToUi(estoqueResult.data);
-            setDevolucaoEstoqueIds(estoqueUi.map((item) => item.variacaoId));
-          } else {
+        <MovimentacaoDevolucaoWizard
+          open={openDevolucao}
+          saving={saving}
+          step={stepDevolucao}
+          setStep={setStepDevolucao}
+          form={formDevolucao}
+          colaboradores={colaboradoresMock}
+          unidades={unidades}
+          variacoes={variacoes}
+          variacaoOptionsDevolucao={variacaoOptionsDevolucao}
+          tamanhosDisponiveis={tamanhosDisponiveis}
+          devolucaoUnidadeId={devolucaoUnidadeId}
+          setDevolucaoUnidadeId={async (value) => {
+            setDevolucaoUnidadeId(value);
+            formDevolucao.setFieldValue("unidadeId", value ?? undefined);
+            if (value) {
+              const estoqueResult = await fetchEstoque({
+                unidadeId: value,
+                offset: 0,
+                limit: 10,
+              });
+              const estoqueUi = mapEstoqueToUi(estoqueResult.data);
+              setDevolucaoEstoqueIds(estoqueUi.map((item) => item.variacaoId));
+            } else {
+              setDevolucaoEstoqueIds([]);
+            }
+          }}
+          devolucaoGenero={devolucaoGenero}
+          setDevolucaoGenero={setDevolucaoGenero}
+          devolucaoTamanho={devolucaoTamanho}
+          setDevolucaoTamanho={setDevolucaoTamanho}
+          devolucaoEstoqueIds={devolucaoEstoqueIds}
+          variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
+          saldos={saldosDevolucaoFiltrados}
+          saldosLoading={devolucaoSaldosLoading}
+          unidadesLoading={unidadesLoading}
+          onUnidadesScroll={loadMoreUnidades}
+          termos={devolucaoTermos}
+          termosLoading={devolucaoTermosLoading}
+          avariasRegistradas={devolucaoAvarias}
+          avariasLoading={devolucaoAvariasLoading}
+          onGerarTermo={handleGerarTermoDevolucao}
+          onAbrirTermo={handleAbrirTermo}
+          onBaixarTermo={handleBaixarTermo}
+          onRegistrarAvarias={handleRegistrarAvarias}
+          onColaboradorSelect={(colaborador) => {
+            setDevolucaoColaborador(colaborador);
+            devolucaoColaboradorRef.current = colaborador;
+          }}
+          onAdvance={async () => {
+            try {
+              await formDevolucao.validateFields(["colaboradorId"]);
+              const colabId = formDevolucao.getFieldValue("colaboradorId");
+              const colabNome = formDevolucao.getFieldValue("colaboradorNome");
+              if (colabId) {
+                const stored = {
+                  id: String(colabId),
+                  nome: String(colabNome ?? ""),
+                };
+                setDevolucaoColaborador(stored);
+                devolucaoColaboradorRef.current = stored;
+              }
+              if (devolucaoUnidadeId) {
+                formDevolucao.setFieldValue("unidadeId", devolucaoUnidadeId);
+              }
+              setStepDevolucao(1);
+            } catch (err) {
+              const apiError = parseApiError(err);
+              toaster.alerta("Verifique os dados", apiError.message);
+            }
+          }}
+          onConfirm={() => void handleDevolucao()}
+          onForceConfirm={() => void handleDevolucao(true)}
+          onCancel={() => {
+            setOpenDevolucao(false);
+            setStepDevolucao(0);
+            formDevolucao.resetFields();
+            setDevolucaoColaborador(null);
+            devolucaoColaboradorRef.current = null;
+            setDevolucaoUnidadeId(null);
+            setDevolucaoGenero(null);
+            setDevolucaoTamanho(null);
             setDevolucaoEstoqueIds([]);
-          }
-        }}
-        devolucaoGenero={devolucaoGenero}
-        setDevolucaoGenero={setDevolucaoGenero}
-        devolucaoTamanho={devolucaoTamanho}
-        setDevolucaoTamanho={setDevolucaoTamanho}
-        devolucaoEstoqueIds={devolucaoEstoqueIds}
-        variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
-        saldos={saldosDevolucaoFiltrados}
-        saldosLoading={devolucaoSaldosLoading}
-        unidadesLoading={unidadesLoading}
-        onUnidadesScroll={loadMoreUnidades}
-        termos={devolucaoTermos}
-        termosLoading={devolucaoTermosLoading}
-        avariasRegistradas={devolucaoAvarias}
-        avariasLoading={devolucaoAvariasLoading}
-        onGerarTermo={handleGerarTermoDevolucao}
-        onAbrirTermo={handleAbrirTermo}
-        onBaixarTermo={handleBaixarTermo}
-        onRegistrarAvarias={handleRegistrarAvarias}
-        onColaboradorSelect={(colaborador) => {
-          setDevolucaoColaborador(colaborador);
-          devolucaoColaboradorRef.current = colaborador;
-        }}
-        onAdvance={async () => {
-          try {
-            await formDevolucao.validateFields(["colaboradorId"]);
-            const colabId = formDevolucao.getFieldValue("colaboradorId");
-            const colabNome = formDevolucao.getFieldValue("colaboradorNome");
-            if (colabId) {
-              const stored = {
-                id: String(colabId),
-                nome: String(colabNome ?? ""),
-              };
-              setDevolucaoColaborador(stored);
-              devolucaoColaboradorRef.current = stored;
-            }
-            if (devolucaoUnidadeId) {
-              formDevolucao.setFieldValue("unidadeId", devolucaoUnidadeId);
-            }
-            setStepDevolucao(1);
-          } catch (err) {
-            const apiError = parseApiError(err);
-            toaster.alerta("Verifique os dados", apiError.message);
-          }
-        }}
-        onConfirm={() => void handleDevolucao()}
-        onForceConfirm={() => void handleDevolucao(true)}
-        onCancel={() => {
-          setOpenDevolucao(false);
-          setStepDevolucao(0);
-          formDevolucao.resetFields();
-          setDevolucaoColaborador(null);
-          devolucaoColaboradorRef.current = null;
-          setDevolucaoUnidadeId(null);
-          setDevolucaoGenero(null);
-          setDevolucaoTamanho(null);
-          setDevolucaoEstoqueIds([]);
-          setDevolucaoSaldos([]);
-          setDevolucaoMovimentacaoId(null);
-          setDevolucaoTermos([]);
-          setDevolucaoAvarias([]);
-        }}
-      />
-    </FardamentosShell>
+            setDevolucaoSaldos([]);
+            setDevolucaoMovimentacaoId(null);
+            setDevolucaoTermos([]);
+            setDevolucaoAvarias([]);
+          }}
+        />
+      </FardamentosShell>
+    </DefaultLayout>
   );
 }
 

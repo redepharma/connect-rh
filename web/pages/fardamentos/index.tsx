@@ -20,6 +20,7 @@ export default function FardamentosOverview() {
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
   const [avarias, setAvarias] = useState<Avaria[]>([]);
   const [totalAvarias, setTotalAvarias] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<{
     unidades: number;
     tipos: number;
@@ -35,14 +36,13 @@ export default function FardamentosOverview() {
 
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const [metricsResult, estoqueResult, avariasResult] = await Promise.all(
-          [
-            fetchMetrics(),
-            fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
-            fetchAvarias({ offset: 0, limit: 5 }),
-          ]
-        );
+        const [metricsResult, estoqueResult, avariasResult] = await Promise.all([
+          fetchMetrics(),
+          fetchEstoque({ baixoEstoque: true, offset: 0, limit: 10 }),
+          fetchAvarias({ offset: 0, limit: 5 }),
+        ]);
 
         if (!active) return;
 
@@ -51,7 +51,14 @@ export default function FardamentosOverview() {
         setAvarias(avariasResult.data);
         setTotalAvarias(avariasResult.total);
       } catch (err) {
-        if (active) toaster.erro("Erro ao carregar dados do painel", err);
+        if (active) {
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Nao foi possivel carregar os dados do painel.";
+          setError(message);
+          toaster.erro("Erro ao carregar dados do painel", err);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -68,7 +75,7 @@ export default function FardamentosOverview() {
   const totalReservado = metrics?.estoqueReservado ?? 0;
   const disponivel = totalEstoque - totalReservado;
   const lowStockItems = estoque.filter(
-    (item) => item.total - item.reservado < LOW_STOCK_THRESHOLD
+    (item) => item.total - item.reservado < LOW_STOCK_THRESHOLD,
   );
 
   return (
@@ -78,8 +85,12 @@ export default function FardamentosOverview() {
         description="Visao geral do catalogo e estoque do modulo de fardamentos."
         actions={
           <Space>
-            <Button type="primary">Novo tipo</Button>
-            <Button>Nova unidade</Button>
+            <Link href="/fardamentos/tipos">
+              <Button type="primary">Novo tipo</Button>
+            </Link>
+            <Link href="/fardamentos/unidades">
+              <Button>Nova unidade</Button>
+            </Link>
           </Space>
         }
       >
@@ -100,20 +111,20 @@ export default function FardamentosOverview() {
           />
           <KpiCard
             title="Alertas de baixo estoque"
-            value={loading ? "--" : lowStockItems.length}
+            value={loading ? "--" : (metrics?.lowStockCount ?? 0)}
             helper={`Limite: < ${LOW_STOCK_THRESHOLD}`}
-            tag={lowStockItems.length ? "Atencao" : "OK"}
-            tagColor={lowStockItems.length ? "red" : "green"}
+            tag={(metrics?.lowStockCount ?? 0) ? "Atencao" : "OK"}
+            tagColor={(metrics?.lowStockCount ?? 0) ? "red" : "green"}
           />
           <KpiCard
             title="Unidades ativas"
-            value={loading ? "--" : unidades.length}
+            value={loading ? "--" : (metrics?.unidades ?? 0)}
             helper="Unidades cadastradas"
           />
           <KpiCard
             title="Tipos e variacoes"
-            value={loading ? "--" : `${tipos.length} tipos`}
-            helper={`${variacoes.length} variacoes cadastradas`}
+            value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
+            helper={`${metrics?.variacoes ?? 0} variacoes cadastradas`}
           />
         </section>
 
@@ -173,15 +184,9 @@ export default function FardamentosOverview() {
           >
             <div className="flex flex-col gap-2">
               {[
-                {
-                  label: "Cadastro de unidades",
-                  href: "/fardamentos/unidades",
-                },
+                { label: "Cadastro de unidades", href: "/fardamentos/unidades" },
                 { label: "Cadastro de tipos", href: "/fardamentos/tipos" },
-                {
-                  label: "Variacoes e tamanhos",
-                  href: "/fardamentos/variacoes",
-                },
+                { label: "Variacoes e tamanhos", href: "/fardamentos/variacoes" },
                 { label: "Controle de estoque", href: "/fardamentos/estoque" },
                 { label: "Movimentacoes", href: "/fardamentos/movimentacoes" },
               ].map((item) => (
