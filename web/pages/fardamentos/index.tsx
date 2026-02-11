@@ -126,22 +126,26 @@ export default function FardamentosOverview() {
                     className="border border-neutral-200/70"
                     size="small"
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
                       <div>
                         <Typography.Text className="block text-sm font-bold! text-neutral-900">
                           {item.tipoNome}
                         </Typography.Text>
-                        <div className="flex gap-2 items-center">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Typography.Text className="block text-xs! text-neutral-500!">
                             {item.variacaoLabel}
                           </Typography.Text>
-                          <Divider vertical={true} plain={true} />
+                          <Divider
+                            vertical={true}
+                            plain={true}
+                            className="hidden sm:inline-block"
+                          />
                           <Typography.Text className="block text-xs! text-neutral-500!">
                             Unidade: {item.unidade}
                           </Typography.Text>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-left sm:text-right">
                         <Typography.Text className="block text-sm font-semibold text-red-600">
                           {item.total - item.reservado} disponiveis
                         </Typography.Text>
@@ -217,7 +221,7 @@ export default function FardamentosOverview() {
                   className="border border-neutral-200/70"
                   size="small"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
                     <div>
                       <Typography.Text className="block text-sm font-medium text-neutral-900">
                         {avaria.colaboradorNome}
@@ -229,7 +233,7 @@ export default function FardamentosOverview() {
                         Unidade: {avaria.unidadeNome}
                       </Typography.Text>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <Typography.Text className="block text-sm font-semibold text-neutral-900">
                         {avaria.quantidade} itens
                       </Typography.Text>
