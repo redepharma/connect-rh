@@ -8,9 +8,9 @@ import type { RequestUser } from '../../auth/types/auth.types';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-const vfs = (pdfFonts as any)?.pdfMake?.vfs ?? (pdfFonts as any)?.vfs;
+const vfs = pdfFonts?.pdfMake?.vfs ?? pdfFonts?.vfs;
 if (vfs) {
-  (pdfMake as any).vfs = vfs;
+  pdfMake.vfs = vfs;
 }
 
 @Injectable()
@@ -124,7 +124,7 @@ export class TermosService {
   private gerarPdfBase64(docDefinition: any): Promise<string> {
     return new Promise((resolve, reject) => {
       try {
-        const pdfDocGenerator = (pdfMake as any).createPdf(docDefinition);
+        const pdfDocGenerator = pdfMake.createPdf(docDefinition);
         pdfDocGenerator.getBuffer((buffer: Uint8Array) => {
           const base64 = Buffer.from(buffer).toString('base64');
           resolve(base64);

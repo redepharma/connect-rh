@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { Button, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Unidade } from "../types/fardamentos.types";
+import type { UnidadeDeleteImpact } from "../services/fardamentos.service";
 
 type UnitTableProps = {
   data: Unidade[];
   loading?: boolean;
+  actionsDisabled?: boolean;
   pagination?: {
     current: number;
     pageSize: number;
@@ -15,15 +18,54 @@ type UnitTableProps = {
   };
   onEdit?: (unidade: Unidade) => void;
   onDelete?: (unidade: Unidade) => void;
+  onFetchDeleteImpact?: (unidadeId: string) => Promise<UnidadeDeleteImpact>;
 };
 
 export function UnitTable({
   data,
   loading,
+  actionsDisabled = false,
   pagination,
   onEdit,
   onDelete,
+  onFetchDeleteImpact,
 }: UnitTableProps) {
+  const [impactByUnidadeId, setImpactByUnidadeId] = useState<
+    Record<string, UnidadeDeleteImpact>
+  >({});
+  const [impactLoadingId, setImpactLoadingId] = useState<string | null>(null);
+
+  const loadImpactIfNeeded = async (unidadeId: string) => {
+    if (!onFetchDeleteImpact) return;
+    if (impactByUnidadeId[unidadeId]) return;
+
+    try {
+      setImpactLoadingId(unidadeId);
+      const impact = await onFetchDeleteImpact(unidadeId);
+      setImpactByUnidadeId((prev) => ({ ...prev, [unidadeId]: impact }));
+    } finally {
+      setImpactLoadingId((current) => (current === unidadeId ? null : current));
+    }
+  };
+
+  const getDeleteDescription = (record: Unidade) => {
+    if (impactLoadingId === record.id) {
+      return "Carregando impacto da exclusao...";
+    }
+
+    const impact = impactByUnidadeId[record.id];
+    if (!impact) {
+      return "Esta acao remove a unidade. Verificando vinculos...";
+    }
+
+    const message = `Vínculos: ${impact.tiposVinculados} tipos, ${impact.estoquesVinculados} estoques e ${impact.movimentacoesVinculadas} movimentações.`;
+    if (impact.bloqueiaExclusao) {
+      return `${message} A exclusão sera bloqueada porque existem movimentações vinculadas.`;
+    }
+
+    return `${message} A exclusão é permitida.`;
+  };
+
   const columns: ColumnsType<Unidade> = [
     {
       title: "Unidade",
@@ -34,7 +76,7 @@ export function UnitTable({
       ),
     },
     {
-      title: "Descricao",
+      title: "Descrição",
       dataIndex: "descricao",
       key: "descricao",
       render: (value?: string | null) => (
@@ -50,23 +92,34 @@ export function UnitTable({
       ),
     },
     {
-      title: "Acoes",
+      title: "Ações",
       key: "acoes",
       render: (_: unknown, record: Unidade) => (
         <Space>
           {onEdit ? (
-            <Button size="small" onClick={() => onEdit(record)}>
+            <Button
+              size="small"
+              onClick={() => onEdit(record)}
+              disabled={actionsDisabled}
+            >
               Editar
             </Button>
           ) : null}
           {onDelete ? (
             <Popconfirm
               title="Remover unidade?"
+              description={getDeleteDescription(record)}
               okText="Sim"
               cancelText="Nao"
               onConfirm={() => onDelete(record)}
+              onOpenChange={(open) => {
+                if (open) {
+                  void loadImpactIfNeeded(record.id);
+                }
+              }}
+              disabled={actionsDisabled}
             >
-              <Button size="small" danger>
+              <Button size="small" danger disabled={actionsDisabled}>
                 Remover
               </Button>
             </Popconfirm>
@@ -82,6 +135,8 @@ export function UnitTable({
       columns={columns}
       dataSource={data}
       loading={loading}
+      scroll={{ x: 720 }}
+      size="middle"
       pagination={
         pagination
           ? {

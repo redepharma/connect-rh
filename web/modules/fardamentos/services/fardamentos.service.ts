@@ -73,6 +73,19 @@ export const deleteUnidade = (id: string) =>
     method: "DELETE",
   });
 
+export type UnidadeDeleteImpact = {
+  unidadeId: string;
+  estoquesVinculados: number;
+  tiposVinculados: number;
+  movimentacoesVinculadas: number;
+  bloqueiaExclusao: boolean;
+};
+
+export const fetchUnidadeDeleteImpact = (id: string) =>
+  apiClient<UnidadeDeleteImpact>(`/fardamentos/unidades/${id}/delete-impact`, {
+    method: "GET",
+  });
+
 export const fetchTipos = (params?: {
   q?: string;
   unidadeId?: string;

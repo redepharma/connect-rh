@@ -1,4 +1,11 @@
-import { ArrayMinSize, IsArray, IsInt, IsString, IsUUID, Min } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class MovimentacaoItemDto {
   @IsUUID('all')

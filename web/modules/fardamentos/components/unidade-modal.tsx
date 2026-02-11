@@ -1,6 +1,6 @@
 "use client";
 
-import { Form, Input, Modal, Select } from "antd";
+import { Checkbox, Form, Input, Modal, Select } from "antd";
 import type { FormInstance } from "antd/es/form";
 import type { Unidade } from "../types/fardamentos.types";
 
@@ -9,6 +9,8 @@ type UnidadeModalProps = {
   editing: Unidade | null;
   form: FormInstance;
   saving: boolean;
+  saveAndCreateAnother: boolean;
+  onSaveAndCreateAnotherChange: (checked: boolean) => void;
   onCancel: () => void;
   onOk: () => void;
 };
@@ -18,6 +20,8 @@ export function UnidadeModal({
   editing,
   form,
   saving,
+  saveAndCreateAnother,
+  onSaveAndCreateAnotherChange,
   onCancel,
   onOk,
 }: UnidadeModalProps) {
@@ -29,12 +33,16 @@ export function UnidadeModal({
       confirmLoading={saving}
       title={editing ? "Editar unidade" : "Nova unidade"}
     >
-      <Form layout="vertical" form={form}>
-        <Form.Item name="nome" label="Nome" rules={[{ required: true }]}>
+      <Form layout="vertical" form={form} validateTrigger="onChange">
+        <Form.Item
+          name="nome"
+          label="Nome"
+          rules={[{ required: true, message: "Informe o nome da unidade" }]}
+        >
           <Input placeholder="Ex: Loja Centro" />
         </Form.Item>
-        <Form.Item name="descricao" label="Descricao">
-          <Input placeholder="Descricao opcional" />
+        <Form.Item name="descricao" label="Descrição">
+          <Input placeholder="Descrição opcional" />
         </Form.Item>
         <Form.Item name="ativo" label="Status" initialValue={true}>
           <Select
@@ -44,6 +52,19 @@ export function UnidadeModal({
             ]}
           />
         </Form.Item>
+        {!editing ? (
+          <Form.Item>
+            <Checkbox
+              checked={saveAndCreateAnother}
+              onChange={(event) =>
+                onSaveAndCreateAnotherChange(event.target.checked)
+              }
+              disabled={saving}
+            >
+              Salvar e criar outra
+            </Checkbox>
+          </Form.Item>
+        ) : null}
       </Form>
     </Modal>
   );

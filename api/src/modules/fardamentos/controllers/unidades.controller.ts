@@ -40,6 +40,12 @@ export class UnidadesController {
     return this.unidadesService.findOne(id);
   }
 
+  @Get(':id/delete-impact')
+  @CheckPolicies((ability: AppAbility) => ability.can('manage', 'Unidade'))
+  getDeleteImpact(@Param('id') id: string) {
+    return this.unidadesService.getDeleteImpact(id);
+  }
+
   @Put(':id')
   @CheckPolicies((ability: AppAbility) => ability.can('manage', 'Unidade'))
   update(@Param('id') id: string, @Body() dto: UpdateUnidadeDto) {
