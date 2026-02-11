@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Statistic, Tag, Typography } from "antd";
+import { Card, Skeleton, Statistic, Tag, Typography } from "antd";
 
 type KpiCardProps = {
   title: string;
@@ -8,9 +8,17 @@ type KpiCardProps = {
   helper?: string;
   tag?: string;
   tagColor?: string;
+  loading?: boolean;
 };
 
-export function KpiCard({ title, value, helper, tag, tagColor }: KpiCardProps) {
+export function KpiCard({
+  title,
+  value,
+  helper,
+  tag,
+  tagColor,
+  loading = false,
+}: KpiCardProps) {
   return (
     <Card className="border border-neutral-200/70 shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -19,15 +27,23 @@ export function KpiCard({ title, value, helper, tag, tagColor }: KpiCardProps) {
             {title}
           </Typography.Text>
 
-          <Statistic
-            value={value}
-            styles={{ content: { color: "#404040", fontWeight: 600 } }}
-          />
+          {loading ? (
+            <Skeleton.Input active size="small" style={{ width: 72 }} />
+          ) : (
+            <Statistic
+              value={value}
+              styles={{ content: { color: "#404040", fontWeight: 600 } }}
+            />
+          )}
 
           {helper ? (
-            <Typography.Text className="text-xs! text-neutral-500 ">
-              {helper}
-            </Typography.Text>
+            loading ? (
+              <Skeleton.Input active size="small" style={{ width: 140 }} />
+            ) : (
+              <Typography.Text className="text-xs! text-neutral-500 ">
+                {helper}
+              </Typography.Text>
+            )
           ) : (
             <span />
           )}

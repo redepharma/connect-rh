@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Button, Card, Divider, Typography } from "antd";
+import { Button, Card, Divider, Skeleton, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { KpiCard } from "@/modules/fardamentos/components/kpi-card";
@@ -76,7 +76,7 @@ export default function FardamentosOverview() {
   return (
     <DefaultLayout>
       <FardamentosShell
-        title="VISÃO GERAL"
+        title="Visão geral"
         description="Visao geral do catalogo e estoque do modulo de fardamentos."
       >
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -84,6 +84,7 @@ export default function FardamentosOverview() {
             title="Estoque disponível"
             value={loading ? "--" : disponivel}
             helper={`${totalReservado} itens reservados`}
+            loading={loading}
           />
           <KpiCard
             title="Alertas de baixo estoque"
@@ -91,16 +92,19 @@ export default function FardamentosOverview() {
             helper={`Itens com quantidade abaixo de ${LOW_STOCK_THRESHOLD}`}
             tag={(metrics?.lowStockCount ?? 0) ? "Atenção" : "OK"}
             tagColor={(metrics?.lowStockCount ?? 0) ? "red" : "green"}
+            loading={loading}
           />
           <KpiCard
             title="Unidades ativas"
             value={loading ? "--" : (metrics?.unidades ?? 0)}
             helper="Unidades cadastradas"
+            loading={loading}
           />
           <KpiCard
             title="Tipos e variações"
             value={loading ? "--" : `${metrics?.tipos ?? 0} tipos`}
             helper={`${metrics?.variacoes ?? 0} variações cadastradas`}
+            loading={loading}
           />
         </section>
 
@@ -115,7 +119,17 @@ export default function FardamentosOverview() {
             }
           >
             <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
-              {lowStockItems.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, idx) => (
+                  <Card
+                    key={`stock-skeleton-${idx}`}
+                    className="border border-neutral-200/70"
+                    size="small"
+                  >
+                    <Skeleton active paragraph={{ rows: 2 }} title={false} />
+                  </Card>
+                ))
+              ) : lowStockItems.length === 0 ? (
                 <Typography.Text className="text-sm text-neutral-500">
                   Nenhum item abaixo do estoque mínimo no momento.
                 </Typography.Text>
@@ -204,13 +218,27 @@ export default function FardamentosOverview() {
               <Typography.Text className="block text-xs text-neutral-500">
                 Total de avarias
               </Typography.Text>
-              <Typography.Text className="text-lg font-semibold text-neutral-900">
-                {loading ? "--" : totalAvarias}
-              </Typography.Text>
+              {loading ? (
+                <Skeleton.Input active size="small" style={{ width: 48 }} />
+              ) : (
+                <Typography.Text className="text-lg font-semibold text-neutral-900">
+                  {totalAvarias}
+                </Typography.Text>
+              )}
             </Card>
           </div>
           <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
-            {avarias.length === 0 ? (
+            {loading ? (
+              Array.from({ length: 4 }).map((_, idx) => (
+                <Card
+                  key={`avaria-skeleton-${idx}`}
+                  className="border border-neutral-200/70"
+                  size="small"
+                >
+                  <Skeleton active paragraph={{ rows: 2 }} title={false} />
+                </Card>
+              ))
+            ) : avarias.length === 0 ? (
               <Typography.Text className="text-sm text-neutral-500">
                 Nenhuma avaria registrada ainda.
               </Typography.Text>
