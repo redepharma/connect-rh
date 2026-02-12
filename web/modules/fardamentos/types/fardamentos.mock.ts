@@ -33,24 +33,41 @@ export const tiposMock: TipoFardamento[] = [
     id: "tipo_camisa_polo",
     nome: "Camisa Polo",
     unidades: ["Lojas", "BAS"],
+    unidadesIds: ["uni_loja", "uni_bas"],
+    unidadesDetalhes: [
+      { id: "uni_loja", nome: "Lojas" },
+      { id: "uni_bas", nome: "BAS" },
+    ],
     variacoesCount: 6,
   },
   {
     id: "tipo_jaleco",
     nome: "Jaleco",
     unidades: ["Escritorio", "BAS"],
+    unidadesIds: ["uni_escritorio", "uni_bas"],
+    unidadesDetalhes: [
+      { id: "uni_escritorio", nome: "Escritorio" },
+      { id: "uni_bas", nome: "BAS" },
+    ],
     variacoesCount: 4,
   },
   {
     id: "tipo_calca",
     nome: "Calca Social",
     unidades: ["Lojas", "Escritorio"],
+    unidadesIds: ["uni_loja", "uni_escritorio"],
+    unidadesDetalhes: [
+      { id: "uni_loja", nome: "Lojas" },
+      { id: "uni_escritorio", nome: "Escritorio" },
+    ],
     variacoesCount: 5,
   },
   {
     id: "tipo_avental",
     nome: "Avental",
     unidades: ["Limpeza"],
+    unidadesIds: ["uni_limpeza"],
+    unidadesDetalhes: [{ id: "uni_limpeza", nome: "Limpeza" }],
     variacoesCount: 3,
   },
 ];

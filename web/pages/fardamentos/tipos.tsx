@@ -1,10 +1,14 @@
-import { Button, Form, Input, Select, Space } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Form, Input, Select, Skeleton, Space, Spin } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { UIEvent } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { TipoTable } from "@/modules/fardamentos/components/tipo-table";
 import { TipoModal } from "@/modules/fardamentos/components/tipo-modal";
-import type { TipoFardamento, Unidade } from "@/modules/fardamentos/types/fardamentos.types";
+import type {
+  TipoFardamento,
+  Unidade,
+} from "@/modules/fardamentos/types/fardamentos.types";
 import {
   createTipo,
   deleteTipo,
@@ -34,20 +38,28 @@ export default function TiposPage() {
   const [unidadesLoading, setUnidadesLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<TipoFardamento | null>(null);
+  const [editingExtraUnidades, setEditingExtraUnidades] = useState<
+    Array<{ id: string; nome: string }>
+  >([]);
+  const [saveAndCreateAnother, setSaveAndCreateAnother] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+  const showPageSkeleton = loading && data.length === 0;
+  const pageBeforeFilterRef = useRef<number>(1);
 
-  useEffect(() => {
-    let active = true;
+  const loadTipos = useCallback(
+    async (params?: { query?: string; unidadeId?: string; currentPage?: number }) => {
+      const effectiveQuery = params?.query ?? debouncedQuery;
+      const effectiveUnidadeId = params?.unidadeId ?? unidadeId;
+      const effectivePage = params?.currentPage ?? page;
 
-    const load = async () => {
       setLoading(true);
       try {
         const [tiposResult, unidadesResult] = await Promise.all([
           fetchTipos({
-            q: debouncedQuery || undefined,
-            unidadeId,
-            offset: (page - 1) * pageSize,
+            q: effectiveQuery || undefined,
+            unidadeId: effectiveUnidadeId,
+            offset: (effectivePage - 1) * pageSize,
             limit: pageSize,
           }),
           fetchUnidades({
@@ -56,26 +68,24 @@ export default function TiposPage() {
             limit: 10,
           }),
         ]);
-        if (active) {
-          setData(mapTiposToUi(tiposResult.data));
-          setTotal(tiposResult.total);
-          setUnidades(unidadesResult.data);
-          setUnidadesOffset(unidadesResult.data.length);
-          setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
-        }
+
+        setData(mapTiposToUi(tiposResult.data));
+        setTotal(tiposResult.total);
+        setUnidades(unidadesResult.data);
+        setUnidadesOffset(unidadesResult.data.length);
+        setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
       } catch (err) {
-        if (active) toaster.erro("Erro ao carregar tipos", err);
+        toaster.erro("Erro ao carregar tipos", err);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
-    };
+    },
+    [debouncedQuery, unidadeId, page, debouncedUnidadesQuery],
+  );
 
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [debouncedQuery, unidadeId, page, debouncedUnidadesQuery]);
+  useEffect(() => {
+    void loadTipos();
+  }, [loadTipos]);
 
   const loadMoreUnidades = async () => {
     if (unidadesLoading || !unidadesHasMore) return;
@@ -97,19 +107,57 @@ export default function TiposPage() {
     }
   };
 
+  const handleUnidadesSearch = (value: string) => {
+    setUnidadesQuery(value);
+    setUnidadesOffset(0);
+    setUnidadesHasMore(true);
+  };
+
+  const handleFilterStateChange = (
+    nextQuery: string,
+    nextUnidadeId: string | undefined,
+  ) => {
+    const currentFiltered = Boolean(query.trim() || unidadeId);
+    const nextFiltered = Boolean(nextQuery.trim() || nextUnidadeId);
+
+    if (!currentFiltered && nextFiltered) {
+      pageBeforeFilterRef.current = page;
+      setPage(1);
+      return;
+    }
+
+    if (currentFiltered && !nextFiltered) {
+      setPage(pageBeforeFilterRef.current);
+      return;
+    }
+
+    if (nextFiltered) {
+      setPage(1);
+    }
+  };
+
+  const handleUnidadesPopupScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLDivElement;
+    if (target.scrollTop + target.offsetHeight >= target.scrollHeight - 16) {
+      void loadMoreUnidades();
+    }
+  };
+
   const openCreate = () => {
     setEditing(null);
+    setEditingExtraUnidades([]);
+    setSaveAndCreateAnother(false);
     form.resetFields();
     setOpen(true);
   };
 
   const openEdit = (tipo: TipoFardamento) => {
     setEditing(tipo);
+    setSaveAndCreateAnother(false);
+    setEditingExtraUnidades(tipo.unidadesDetalhes ?? []);
     form.setFieldsValue({
       nome: tipo.nome,
-      unidadesIds: unidades
-        .filter((unit) => tipo.unidades.includes(unit.nome))
-        .map((unit) => unit.id),
+      unidadesIds: tipo.unidadesIds,
     });
     setOpen(true);
   };
@@ -121,15 +169,34 @@ export default function TiposPage() {
       if (editing) {
         await updateTipo(editing.id, values);
         toaster.sucesso("Tipo atualizado", "Os dados foram salvos.");
+        setOpen(false);
+        setEditing(null);
       } else {
         await createTipo(values);
-        toaster.sucesso("Tipo criado", "O tipo foi cadastrado.");
+        if (saveAndCreateAnother) {
+          toaster.sucesso(
+            "Tipo criado",
+            "O tipo foi cadastrado. Você pode adicionar outro.",
+          );
+          form.resetFields();
+        } else {
+          toaster.sucesso("Tipo criado", "O tipo foi cadastrado.");
+          setOpen(false);
+          setEditing(null);
+        }
       }
-      setOpen(false);
-      setEditing(null);
       setQuery("");
       setPage(1);
+      await loadTipos({ query: "", unidadeId, currentPage: 1 });
     } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "errorFields" in err &&
+        Array.isArray((err as { errorFields?: unknown[] }).errorFields)
+      ) {
+        return;
+      }
       toaster.erro("Erro ao salvar tipo", err);
     } finally {
       setSaving(false);
@@ -142,7 +209,8 @@ export default function TiposPage() {
       await deleteTipo(tipo.id);
       setQuery("");
       setPage(1);
-      toaster.sucesso("Tipo removido", "O tipo foi excluido.");
+      await loadTipos({ query: "", unidadeId, currentPage: 1 });
+      toaster.sucesso("Tipo removido", "O tipo foi excluído.");
     } catch (err) {
       toaster.erro("Erro ao remover tipo", err);
     } finally {
@@ -154,64 +222,93 @@ export default function TiposPage() {
     <DefaultLayout>
       <FardamentosShell
         title="Tipos de fardamentos"
-        description="Gerencie os tipos e associacoes com unidades."
+        description="Gerencie os tipos e associações com unidades."
         actions={
-          <Button type="primary" onClick={openCreate}>
+          <Button
+            type="primary"
+            onClick={openCreate}
+            disabled={loading || saving}
+            className="w-full sm:w-auto"
+          >
             Novo tipo
           </Button>
         }
       >
         <SectionCard
-          title="Catalogo de tipos"
+          title="Catálogo de tipos"
           description="Cada tipo pode ser vinculado a uma ou mais unidades."
           actions={
-            <Space>
-              <Input
-                placeholder="Buscar tipo"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                allowClear
-              />
-              <Select
-                placeholder="Filtrar unidade"
-                value={unidadeId}
-                allowClear
-                onChange={(value) => {
-                  setUnidadeId(value);
-                  setPage(1);
-                }}
-                showSearch
-                onSearch={(value) => {
-                  setUnidadesQuery(value);
-                  setUnidadesOffset(0);
-                  setUnidadesHasMore(true);
-                }}
-                onPopupScroll={(event) => {
-                  const target = event.target as HTMLDivElement;
-                  if (
-                    target.scrollTop + target.offsetHeight >=
-                    target.scrollHeight - 16
-                  ) {
-                    void loadMoreUnidades();
-                  }
-                }}
-                filterOption={false}
-                loading={unidadesLoading}
-                options={unidades.map((unit) => ({
-                  label: unit.nome,
-                  value: unit.id,
-                }))}
-                style={{ minWidth: 180 }}
-              />
-            </Space>
+            showPageSkeleton ? (
+              <Space className="w-full sm:w-auto">
+                <Skeleton.Input
+                  active
+                  size="small"
+                  style={{ width: 200, maxWidth: "100%" }}
+                />
+                <Skeleton.Input
+                  active
+                  size="small"
+                  style={{ width: 180, maxWidth: "100%" }}
+                />
+              </Space>
+            ) : (
+              <Space className="w-full sm:w-auto" wrap>
+                <div className="w-full sm:w-auto">
+                  <Input
+                    placeholder="Buscar tipo"
+                    value={query}
+                    onChange={(event) => {
+                      const nextQuery = event.target.value;
+                      setQuery(nextQuery);
+                      handleFilterStateChange(nextQuery, unidadeId);
+                    }}
+                    allowClear
+                    disabled={loading || saving}
+                    className="w-full sm:min-w-72"
+                  />
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Select
+                    placeholder="Filtrar unidade"
+                    value={unidadeId}
+                    allowClear
+                    onChange={(value) => {
+                      const nextUnidadeId = value;
+                      setUnidadeId(nextUnidadeId);
+                      handleFilterStateChange(query, nextUnidadeId);
+                    }}
+                    showSearch
+                    onSearch={handleUnidadesSearch}
+                    onPopupScroll={handleUnidadesPopupScroll}
+                    filterOption={false}
+                    loading={unidadesLoading}
+                    disabled={loading || saving}
+                    dropdownRender={(menu) => (
+                      <>
+                        {menu}
+                        {unidadesLoading ? (
+                          <div className="px-3 py-2 text-center text-xs text-neutral-500">
+                            <Spin size="small" />{" "}
+                            <span className="ml-2">Carregando mais...</span>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                    options={unidades.map((unit) => ({
+                      label: unit.nome,
+                      value: unit.id,
+                    }))}
+                    className="w-full sm:min-w-[180px]"
+                  />
+                </div>
+              </Space>
+            )
           }
         >
           <TipoTable
             data={data}
-            loading={loading}
+            loading={loading || saving}
+            actionsDisabled={saving || loading}
             pagination={{
               current: page,
               pageSize,
@@ -228,6 +325,12 @@ export default function TiposPage() {
           form={form}
           saving={saving}
           unidades={unidades}
+          extraUnidades={editingExtraUnidades}
+          unidadesLoading={unidadesLoading}
+          onUnidadesSearch={handleUnidadesSearch}
+          onUnidadesScroll={loadMoreUnidades}
+          saveAndCreateAnother={saveAndCreateAnother}
+          onSaveAndCreateAnotherChange={setSaveAndCreateAnother}
           onCancel={() => setOpen(false)}
           onOk={handleSave}
         />

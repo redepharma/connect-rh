@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Select, Space, Switch } from "antd";
+import { Alert, Button, Input, Select, Space, Spin, Switch } from "antd";
 import { useEffect, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -202,6 +202,17 @@ export default function EstoquePage() {
                 }}
                 filterOption={false}
                 loading={unidadesLoading}
+                dropdownRender={(menu) => (
+                  <>
+                    {menu}
+                    {unidadesLoading ? (
+                      <div className="px-3 py-2 text-center text-xs text-neutral-500">
+                        <Spin size="small" />{" "}
+                        <span className="ml-2">Carregando mais...</span>
+                      </div>
+                    ) : null}
+                  </>
+                )}
                 options={unidades.map((unit) => ({
                   label: unit.nome,
                   value: unit.id,

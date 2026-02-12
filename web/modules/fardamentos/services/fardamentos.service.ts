@@ -179,7 +179,9 @@ export const mapTiposToUi = (tipos: TipoResponse[]): TipoFardamento[] =>
     id: tipo.id,
     nome: tipo.nome,
     unidades: (tipo.unidades ?? []).map((u) => u.nome),
-    variacoesCount: 0,
+    unidadesIds: (tipo.unidades ?? []).map((u) => u.id),
+    unidadesDetalhes: tipo.unidades ?? [],
+    variacoesCount: tipo.variacoesCount ?? 0,
   }));
 
 export const mapVariacoesToUi = (variacoes: VariacaoResponse[]): Variacao[] =>

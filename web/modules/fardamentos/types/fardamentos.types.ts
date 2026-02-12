@@ -11,6 +11,8 @@ export type TipoFardamento = {
   id: string;
   nome: string;
   unidades: string[];
+  unidadesIds: string[];
+  unidadesDetalhes: { id: string; nome: string }[];
   variacoesCount: number;
 };
 
@@ -36,6 +38,7 @@ export type TipoResponse = {
   id: string;
   nome: string;
   unidades: { id: string; nome: string }[];
+  variacoesCount?: number;
 };
 
 export type VariacaoResponse = {
