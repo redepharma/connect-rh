@@ -224,7 +224,7 @@ export default function HistoricoMovimentacoesPage() {
                 : "gold"
           }
         >
-          {value}
+          {value === MovimentacaoStatus.EM_TRANSITO ? "EM TRANSITO" : value}
         </Tag>
       ),
     },

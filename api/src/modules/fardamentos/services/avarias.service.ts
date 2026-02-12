@@ -33,7 +33,7 @@ export class AvariasService {
   ) {
     const movimentacao = await this.movRepo.findOne({
       where: { id: movimentacaoId },
-      relations: ['unidade'],
+      relations: ['unidade', 'eventos'],
     });
 
     if (!movimentacao) {
@@ -46,7 +46,18 @@ export class AvariasService {
       );
     }
 
-    if (movimentacao.status !== 'CONCLUIDO') {
+    const statusAtual = String(movimentacao.status ?? '')
+      .trim()
+      .toUpperCase();
+    const possuiEventoConcluido = (movimentacao.eventos ?? []).some(
+      (evento) => String(evento.status ?? '').trim().toUpperCase() === 'CONCLUIDO',
+    );
+
+    if (
+      statusAtual !== 'CONCLUIDO' &&
+      statusAtual !== 'CONCLUIDA' &&
+      !possuiEventoConcluido
+    ) {
       throw new BadRequestException(
         'Avaria só pode ser registrada após conclusão.',
       );

@@ -5,11 +5,13 @@ import {
   Input,
   Popconfirm,
   Select,
+  Skeleton,
   Space,
+  Spin,
   Table,
   Tag,
 } from "antd";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { MovimentacaoEntregaWizard } from "@/modules/fardamentos/components/movimentacao-entrega-wizard";
@@ -39,16 +41,13 @@ import {
   mapEstoqueToUi,
   mapMovimentacoesToUi,
   mapVariacoesToUi,
-  registrarAvarias,
   updateMovimentacaoStatus,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { parseApiError } from "@/shared/error-handlers/api-errors";
+import { formatIsoDateTime } from "@/shared/formatters/date";
+import { b64toBlob } from "@/shared/utils/blob";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
-import type {
-  Avaria,
-  CreateAvariaItem,
-} from "@/modules/fardamentos/types/avarias.types";
 import { colaboradoresMock } from "@/modules/fardamentos/types/fardamentos.mock";
 import DefaultLayout from "@/layouts/default";
 
@@ -57,6 +56,7 @@ const { RangePicker } = DatePicker;
 export default function MovimentacoesPage() {
   const [data, setData] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const [total, setTotal] = useState(0);
@@ -84,6 +84,9 @@ export default function MovimentacoesPage() {
   const [unidadesHasMore, setUnidadesHasMore] = useState(true);
   const [unidadesLoading, setUnidadesLoading] = useState(false);
   const [variacoes, setVariacoes] = useState<Variacao[]>([]);
+  const [variacoesOffset, setVariacoesOffset] = useState(0);
+  const [variacoesHasMore, setVariacoesHasMore] = useState(true);
+  const [variacoesLoading, setVariacoesLoading] = useState(false);
   const [openEntrega, setOpenEntrega] = useState(false);
   const [openDevolucao, setOpenDevolucao] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -109,6 +112,7 @@ export default function MovimentacoesPage() {
     { variacaoId: string; total: number; reservado: number }[]
   >([]);
   const [entregaUnidadeId, setEntregaUnidadeId] = useState<string | null>(null);
+  const [entregaTipoId, setEntregaTipoId] = useState<string | null>(null);
   const [entregaGenero, setEntregaGenero] = useState<Genero | null>(null);
   const [entregaTamanho, setEntregaTamanho] = useState<string | null>(null);
   const entregaEstoqueIds = useMemo(
@@ -118,6 +122,7 @@ export default function MovimentacoesPage() {
   const [devolucaoUnidadeId, setDevolucaoUnidadeId] = useState<string | null>(
     null,
   );
+  const [devolucaoTipoId, setDevolucaoTipoId] = useState<string | null>(null);
   const [devolucaoGenero, setDevolucaoGenero] = useState<Genero | null>(null);
   const [devolucaoTamanho, setDevolucaoTamanho] = useState<string | null>(null);
   const [devolucaoEstoqueIds, setDevolucaoEstoqueIds] = useState<string[]>([]);
@@ -138,59 +143,163 @@ export default function MovimentacoesPage() {
   const [devolucaoMovimentacaoId, setDevolucaoMovimentacaoId] = useState<
     string | null
   >(null);
-  const [devolucaoAvarias, setDevolucaoAvarias] = useState<Avaria[]>([]);
-  const [devolucaoAvariasLoading, setDevolucaoAvariasLoading] = useState(false);
   const [entregaTermos, setEntregaTermos] = useState<TermoInfo[]>([]);
   const [devolucaoTermos, setDevolucaoTermos] = useState<TermoInfo[]>([]);
   const [entregaTermosLoading, setEntregaTermosLoading] = useState(false);
   const [devolucaoTermosLoading, setDevolucaoTermosLoading] = useState(false);
+  const pageBeforeFilterRef = useRef<number>(1);
 
-  const load = async () => {
+  const isFiltered = (value: {
+    q?: string;
+    unidadeId?: string;
+    tipo?: MovimentacaoTipo;
+    status?: MovimentacaoStatus;
+    startDate?: string;
+    endDate?: string;
+  }) =>
+    Boolean(
+      (value.q ?? "").trim() ||
+      value.unidadeId ||
+      value.tipo ||
+      value.status ||
+      value.startDate ||
+      value.endDate,
+    );
+
+  const handleFiltersStateChange = (nextFilters: typeof filters) => {
+    const currentFiltered = isFiltered(filters);
+    const nextFiltered = isFiltered(nextFilters);
+
+    if (!currentFiltered && nextFiltered) {
+      pageBeforeFilterRef.current = page;
+      setPage(1);
+      return;
+    }
+
+    if (currentFiltered && !nextFiltered) {
+      setPage(pageBeforeFilterRef.current);
+      return;
+    }
+
+    if (nextFiltered) {
+      setPage(1);
+    }
+  };
+
+  const movimentacoesParams = useMemo(
+    () => ({
+      q: debouncedFiltersQ || undefined,
+      unidadeId: filtroUnidadeId,
+      tipo: filtroTipo,
+      status: filtroStatus,
+      startDate: filtroStartDate,
+      endDate: filtroEndDate,
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+    }),
+    [
+      debouncedFiltersQ,
+      filtroUnidadeId,
+      filtroTipo,
+      filtroStatus,
+      filtroStartDate,
+      filtroEndDate,
+      page,
+      pageSize,
+    ],
+  );
+
+  const loadMovimentacoes = useCallback(async () => {
     setLoading(true);
     try {
-      const [movResult, unidadesResult, variacoesResult] = await Promise.all([
-        fetchMovimentacoes({
-          q: debouncedFiltersQ || undefined,
-          unidadeId: filtroUnidadeId,
-          tipo: filtroTipo,
-          status: filtroStatus,
-          startDate: filtroStartDate,
-          endDate: filtroEndDate,
-          offset: (page - 1) * pageSize,
-          limit: pageSize,
-        }),
-        fetchUnidades({
-          q: debouncedUnidadesQuery || undefined,
-          offset: 0,
-          limit: 10,
-        }),
-        fetchVariacoes({ offset: 0, limit: 10 }),
-      ]);
+      const movResult = await fetchMovimentacoes(movimentacoesParams);
       setData(mapMovimentacoesToUi(movResult.data));
       setTotal(movResult.total);
-      setUnidades(unidadesResult.data);
-      setUnidadesOffset(unidadesResult.data.length);
-      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
-      setVariacoes(mapVariacoesToUi(variacoesResult.data));
     } catch (err) {
       toaster.erro("Erro ao carregar movimentacoes", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [movimentacoesParams]);
+
+  const refreshMovimentacoes = useCallback(() => {
+    setReloadVersion((value) => value + 1);
+  }, []);
 
   useEffect(() => {
-    void load();
-  }, [
-    debouncedFiltersQ,
-    filtroUnidadeId,
-    filtroTipo,
-    filtroStatus,
-    filtroStartDate,
-    filtroEndDate,
-    page,
-    debouncedUnidadesQuery,
-  ]);
+    void loadMovimentacoes();
+  }, [loadMovimentacoes, reloadVersion]);
+
+  const loadFiltroUnidades = useCallback(async () => {
+    setUnidadesLoading(true);
+    try {
+      const unidadesResult = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      setUnidades(unidadesResult.data);
+      setUnidadesOffset(unidadesResult.data.length);
+      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  }, [debouncedUnidadesQuery]);
+
+  useEffect(() => {
+    void loadFiltroUnidades();
+  }, [loadFiltroUnidades]);
+
+  const loadInitialVariacoes = useCallback(async () => {
+    setVariacoesLoading(true);
+    try {
+      const result = await fetchVariacoes({ offset: 0, limit: 10 });
+      setVariacoes(mapVariacoesToUi(result.data));
+      setVariacoesOffset(result.data.length);
+      setVariacoesHasMore(result.data.length < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar variações", err);
+    } finally {
+      setVariacoesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!openEntrega && !openDevolucao) return;
+    if (variacoes.length > 0) return;
+    void loadInitialVariacoes();
+  }, [openEntrega, openDevolucao, variacoes.length, loadInitialVariacoes]);
+
+  const loadMoreVariacoes = async () => {
+    if (variacoesLoading || !variacoesHasMore) return;
+    setVariacoesLoading(true);
+    try {
+      const result = await fetchVariacoes({
+        offset: variacoesOffset,
+        limit: 10,
+      });
+      const mapped = mapVariacoesToUi(result.data);
+      setVariacoes((prev) => {
+        const map = new Map(prev.map((item) => [item.id, item]));
+        mapped.forEach((item) => map.set(item.id, item));
+        return Array.from(map.values());
+      });
+      const nextOffset = variacoesOffset + result.data.length;
+      setVariacoesOffset(nextOffset);
+      setVariacoesHasMore(nextOffset < result.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar variações", err);
+    } finally {
+      setVariacoesLoading(false);
+    }
+  };
+
+  const loadEstoqueByUnidade = async (unidadeId: string) => {
+    const result = await fetchEstoque({ unidadeId, offset: 0, limit: 100 });
+    return mapEstoqueToUi(result.data);
+  };
 
   const loadMoreUnidades = async () => {
     if (unidadesLoading || !unidadesHasMore) return;
@@ -225,31 +334,68 @@ export default function MovimentacoesPage() {
       .finally(() => setDevolucaoSaldosLoading(false));
   }, [devolucaoColaborador]);
 
-  const variacaoOptions = useMemo(
+  const variacoesById = useMemo(
     () =>
-      variacoes.map((v) => ({
-        label: `${v.tipoNome} - ${v.tamanho} - ${v.genero}`,
-        value: v.id,
-      })),
+      new Map(
+        variacoes.map((variacao) => [
+          variacao.id,
+          { tipoId: variacao.tipoId, tamanho: variacao.tamanho },
+        ]),
+      ),
     [variacoes],
   );
 
-  const tamanhosDisponiveis = useMemo(() => {
+  const entregaTiposDisponiveis = useMemo(() => {
+    const tiposMap = new Map<string, string>();
+    variacoes.forEach((variacao) => {
+      if (
+        entregaEstoqueIds.length > 0 &&
+        !entregaEstoqueIds.includes(variacao.id)
+      ) {
+        return;
+      }
+      tiposMap.set(variacao.tipoId, variacao.tipoNome);
+    });
+
+    return Array.from(tiposMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  }, [variacoes, entregaEstoqueIds]);
+
+  const entregaTamanhosDisponiveis = useMemo(() => {
     const tamanhos = new Set<string>();
-    variacoes.forEach((v) => tamanhos.add(v.tamanho));
-    return Array.from(tamanhos).sort();
-  }, [variacoes]);
+    variacoes.forEach((variacao) => {
+      if (
+        entregaEstoqueIds.length > 0 &&
+        !entregaEstoqueIds.includes(variacao.id)
+      ) {
+        return;
+      }
+      if (entregaTipoId && variacao.tipoId !== entregaTipoId) return;
+      if (entregaGenero && variacao.genero !== entregaGenero) return;
+      tamanhos.add(variacao.tamanho);
+    });
+
+    return Array.from(tamanhos).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [variacoes, entregaEstoqueIds, entregaTipoId, entregaGenero]);
 
   const variacoesFiltradas = useMemo(() => {
     return variacoes.filter((v) => {
       if (entregaEstoqueIds.length > 0 && !entregaEstoqueIds.includes(v.id)) {
         return false;
       }
+      if (entregaTipoId && v.tipoId !== entregaTipoId) return false;
       if (entregaGenero && v.genero !== entregaGenero) return false;
       if (entregaTamanho && v.tamanho !== entregaTamanho) return false;
       return true;
     });
-  }, [variacoes, entregaGenero, entregaTamanho, entregaEstoqueIds]);
+  }, [
+    variacoes,
+    entregaTipoId,
+    entregaGenero,
+    entregaTamanho,
+    entregaEstoqueIds,
+  ]);
 
   const variacaoOptionsFiltradas = useMemo(
     () =>
@@ -259,6 +405,40 @@ export default function MovimentacoesPage() {
       })),
     [variacoesFiltradas],
   );
+
+  const devolucaoTiposDisponiveis = useMemo(() => {
+    const tiposMap = new Map<string, string>();
+    variacoes.forEach((variacao) => {
+      if (
+        devolucaoEstoqueIds.length > 0 &&
+        !devolucaoEstoqueIds.includes(variacao.id)
+      ) {
+        return;
+      }
+      tiposMap.set(variacao.tipoId, variacao.tipoNome);
+    });
+
+    return Array.from(tiposMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  }, [variacoes, devolucaoEstoqueIds]);
+
+  const devolucaoTamanhosDisponiveis = useMemo(() => {
+    const tamanhos = new Set<string>();
+    variacoes.forEach((variacao) => {
+      if (
+        devolucaoEstoqueIds.length > 0 &&
+        !devolucaoEstoqueIds.includes(variacao.id)
+      ) {
+        return;
+      }
+      if (devolucaoTipoId && variacao.tipoId !== devolucaoTipoId) return;
+      if (devolucaoGenero && variacao.genero !== devolucaoGenero) return;
+      tamanhos.add(variacao.tamanho);
+    });
+
+    return Array.from(tamanhos).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [variacoes, devolucaoEstoqueIds, devolucaoTipoId, devolucaoGenero]);
 
   const variacoesDevolucaoFiltradas = useMemo(() => {
     const saldoIds = devolucaoSaldos.map((saldo) => saldo.variacaoId);
@@ -272,12 +452,14 @@ export default function MovimentacoesPage() {
       if (saldoIds.length > 0 && !saldoIds.includes(v.id)) {
         return false;
       }
+      if (devolucaoTipoId && v.tipoId !== devolucaoTipoId) return false;
       if (devolucaoGenero && v.genero !== devolucaoGenero) return false;
       if (devolucaoTamanho && v.tamanho !== devolucaoTamanho) return false;
       return true;
     });
   }, [
     variacoes,
+    devolucaoTipoId,
     devolucaoGenero,
     devolucaoTamanho,
     devolucaoEstoqueIds,
@@ -295,11 +477,59 @@ export default function MovimentacoesPage() {
 
   const saldosDevolucaoFiltrados = useMemo(() => {
     return devolucaoSaldos.filter((saldo) => {
+      if (devolucaoTipoId) {
+        const variacao = variacoesById.get(saldo.variacaoId);
+        if (!variacao || variacao.tipoId !== devolucaoTipoId) return false;
+      }
       if (devolucaoGenero && saldo.genero !== devolucaoGenero) return false;
       if (devolucaoTamanho && saldo.tamanho !== devolucaoTamanho) return false;
       return true;
     });
-  }, [devolucaoSaldos, devolucaoGenero, devolucaoTamanho]);
+  }, [
+    devolucaoSaldos,
+    devolucaoTipoId,
+    devolucaoGenero,
+    devolucaoTamanho,
+    variacoesById,
+  ]);
+
+  useEffect(() => {
+    if (
+      entregaTipoId &&
+      !entregaTiposDisponiveis.some((tipo) => tipo.value === entregaTipoId)
+    ) {
+      setEntregaTipoId(null);
+      setEntregaTamanho(null);
+    }
+  }, [entregaTipoId, entregaTiposDisponiveis]);
+
+  useEffect(() => {
+    if (
+      entregaTamanho &&
+      !entregaTamanhosDisponiveis.includes(entregaTamanho)
+    ) {
+      setEntregaTamanho(null);
+    }
+  }, [entregaTamanho, entregaTamanhosDisponiveis]);
+
+  useEffect(() => {
+    if (
+      devolucaoTipoId &&
+      !devolucaoTiposDisponiveis.some((tipo) => tipo.value === devolucaoTipoId)
+    ) {
+      setDevolucaoTipoId(null);
+      setDevolucaoTamanho(null);
+    }
+  }, [devolucaoTipoId, devolucaoTiposDisponiveis]);
+
+  useEffect(() => {
+    if (
+      devolucaoTamanho &&
+      !devolucaoTamanhosDisponiveis.includes(devolucaoTamanho)
+    ) {
+      setDevolucaoTamanho(null);
+    }
+  }, [devolucaoTamanho, devolucaoTamanhosDisponiveis]);
 
   const handleEntrega = async () => {
     try {
@@ -318,7 +548,7 @@ export default function MovimentacoesPage() {
       values.colaboradorNome = String(storedColaboradorNome ?? "");
       if (!values.colaboradorId) {
         toaster.alerta(
-          "Colaborador obrigatorio",
+          "Colaborador obrigatório",
           "Selecione um colaborador para continuar.",
         );
         return;
@@ -331,7 +561,7 @@ export default function MovimentacoesPage() {
       if (!values.unidadeId) {
         toaster.alerta(
           "Unidade indisponivel",
-          "Nenhuma unidade disponivel para carregar o estoque.",
+          "Nenhuma unidade disponível para carregar o estoque.",
         );
         return;
       }
@@ -342,20 +572,17 @@ export default function MovimentacoesPage() {
               total: item.total,
               reservado: item.reservado,
             }))
-          : mapEstoqueToUi(
-              (
-                await fetchEstoque({
-                  unidadeId: values.unidadeId,
-                  offset: 0,
-                  limit: 10,
-                })
-              ).data,
-            );
+          : await loadEstoqueByUnidade(values.unidadeId);
       const estoqueMap = new Map(
         estoqueUi.map((item) => [item.variacaoId, item]),
       );
-      const itensInvalidos = (values.itens ?? []).filter((item: any) => {
+      const itens = (values.itens ?? []) as Array<{
+        variacaoId: string;
+        quantidade: number;
+      }>;
+      const itensInvalidos = itens.filter((item) => {
         const estoque = estoqueMap.get(item.variacaoId);
+        if (!estoque) return false;
         const disponivel = (estoque?.total ?? 0) - (estoque?.reservado ?? 0);
         return item.quantidade > disponivel;
       });
@@ -363,18 +590,40 @@ export default function MovimentacoesPage() {
       if (itensInvalidos.length > 0) {
         toaster.alerta(
           "Estoque insuficiente",
-          "Estoque insuficiente para um ou mais itens. Verifique o saldo disponivel.",
+          "Estoque insuficiente para um ou mais itens. Verifique o saldo disponível.",
         );
         return;
       }
       setSaving(true);
       const created = await createEntrega(values);
-      toaster.sucesso("Entrega registrada", "A movimentacao foi criada.");
+      toaster.sucesso("Entrega registrada", "A movimentação foi criada.");
       setEntregaMovimentacaoId(created.id);
+      try {
+        await gerarTermo(created.id);
+        const termosGerados = await listarTermos(created.id);
+        setEntregaTermos(termosGerados);
+        toaster.sucesso(
+          "Termo gerado automaticamente",
+          "A primeira versão do termo já está disponível.",
+        );
+      } catch (termoErr) {
+        setEntregaTermos([]);
+        toaster.alerta(
+          "Entrega registrada sem termo",
+          parseApiError(termoErr).message,
+        );
+      }
       setStepEntrega(2);
-      setEntregaTermos([]);
-      await load();
+      refreshMovimentacoes();
     } catch (err) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "errorFields" in err &&
+        Array.isArray((err as { errorFields?: unknown[] }).errorFields)
+      ) {
+        return;
+      }
       toaster.erro("Erro ao registrar entrega", err);
     } finally {
       setSaving(false);
@@ -398,7 +647,7 @@ export default function MovimentacoesPage() {
       values.colaboradorNome = String(storedColaboradorNome ?? "");
       if (!values.colaboradorId) {
         toaster.alerta(
-          "Colaborador obrigatorio",
+          "Colaborador obrigatório",
           "Selecione um colaborador para continuar.",
         );
         return;
@@ -413,26 +662,43 @@ export default function MovimentacoesPage() {
       if (!values.unidadeId) {
         toaster.alerta(
           "Unidade indisponivel",
-          "Nenhuma unidade disponivel para registrar a devolucao.",
+          "Nenhuma unidade disponível para registrar a devolução.",
         );
         return;
       }
       setSaving(true);
       const created = await createDevolucao({ ...values, force });
-      toaster.sucesso("Devolucao registrada", "A movimentacao foi criada.");
+      await updateMovimentacaoStatus(created.id, MovimentacaoStatus.EM_TRANSITO);
+      toaster.sucesso(
+        "Devolução registrada",
+        "A movimentação foi criada e movida para Em trânsito.",
+      );
       if (force) {
         toaster.alerta(
-          "Devolucao forcada",
-          "A devolucao foi registrada ignorando o saldo em posse.",
+          "Devoluçãao forçada",
+          "A devoluçãao foi registrada ignorando o saldo em posse.",
         );
       }
       setDevolucaoMovimentacaoId(created.id);
-      setDevolucaoAvarias([]);
+      try {
+        await gerarTermo(created.id);
+        const termosGerados = await listarTermos(created.id);
+        setDevolucaoTermos(termosGerados);
+        toaster.sucesso(
+          "Termo gerado automaticamente",
+          "A primeira versão do termo já está disponível.",
+        );
+      } catch (termoErr) {
+        setDevolucaoTermos([]);
+        toaster.alerta(
+          "Devolução registrada sem termo",
+          parseApiError(termoErr).message,
+        );
+      }
       setStepDevolucao(2);
-      setDevolucaoTermos([]);
-      await load();
+      refreshMovimentacoes();
     } catch (err) {
-      toaster.erro("Erro ao registrar devolucao", err);
+      toaster.erro("Erro ao registrar devolução", err);
     } finally {
       setSaving(false);
     }
@@ -445,7 +711,7 @@ export default function MovimentacoesPage() {
       await gerarTermo(entregaMovimentacaoId);
       const result = await listarTermos(entregaMovimentacaoId);
       setEntregaTermos(result);
-      toaster.sucesso("Termo gerado", "Uma nova versao foi criada.");
+      toaster.sucesso("Termo gerado", "Uma nova versão foi criada.");
     } catch (err) {
       toaster.erro("Erro ao gerar termo", err);
     } finally {
@@ -460,42 +726,11 @@ export default function MovimentacoesPage() {
       await gerarTermo(devolucaoMovimentacaoId);
       const result = await listarTermos(devolucaoMovimentacaoId);
       setDevolucaoTermos(result);
-      toaster.sucesso("Termo gerado", "Uma nova versao foi criada.");
+      toaster.sucesso("Termo gerado", "Uma nova versão foi criada.");
     } catch (err) {
       toaster.erro("Erro ao gerar termo", err);
     } finally {
       setDevolucaoTermosLoading(false);
-    }
-  };
-
-  const handleRegistrarAvarias = async (itens: CreateAvariaItem[]) => {
-    if (!devolucaoMovimentacaoId) {
-      toaster.alerta(
-        "Devolucao pendente",
-        "Finalize a devolucao para registrar avarias.",
-      );
-      return;
-    }
-    if (!itens.length) {
-      toaster.alerta(
-        "Informe as avarias",
-        "Adicione ao menos uma avaria para registrar.",
-      );
-      return;
-    }
-    setDevolucaoAvariasLoading(true);
-    try {
-      const saved = await registrarAvarias(devolucaoMovimentacaoId, itens);
-      setDevolucaoAvarias(saved);
-      formDevolucao.setFieldValue("avarias", []);
-      toaster.sucesso(
-        "Avarias registradas",
-        "Os itens avariados foram registrados.",
-      );
-    } catch (err) {
-      toaster.erro("Erro ao registrar avarias", err);
-    } finally {
-      setDevolucaoAvariasLoading(false);
     }
   };
 
@@ -533,14 +768,14 @@ export default function MovimentacoesPage() {
       await updateMovimentacaoStatus(id, status);
       const label =
         status === MovimentacaoStatus.CONCLUIDO
-          ? "concluida"
+          ? "concluída"
           : status === MovimentacaoStatus.CANCELADO
             ? "cancelada"
             : "atualizada";
-      toaster.sucesso("Movimentacao atualizada", `Movimentacao ${label}.`);
-      await load();
+      toaster.sucesso("Movimentação atualizada", `Movimentação ${label}.`);
+      refreshMovimentacoes();
     } catch (err) {
-      toaster.erro("Erro ao atualizar movimentacao", err);
+      toaster.erro("Erro ao atualizar movimentação", err);
     } finally {
       setSaving(false);
     }
@@ -551,12 +786,24 @@ export default function MovimentacoesPage() {
       title: "Colaborador",
       dataIndex: "colaboradorNome",
       key: "colaboradorNome",
+      render: (value: string) => {
+        const maxLength = 18;
+        const truncated =
+          value.length > maxLength
+            ? `${value.slice(0, maxLength).trimEnd()}...`
+            : value;
+        return <span title={value}>{truncated}</span>;
+      },
     },
     {
       title: "Tipo",
       dataIndex: "tipo",
       key: "tipo",
-      render: (value: string) => <Tag>{value}</Tag>,
+      render: (value: string) => (
+        <Tag color={value === MovimentacaoTipo.DEVOLUCAO ? "volcano" : "blue"}>
+          {value === MovimentacaoTipo.DEVOLUCAO ? "DEVOLUÇÃO" : value}
+        </Tag>
+      ),
     },
     {
       title: "Status",
@@ -572,7 +819,7 @@ export default function MovimentacoesPage() {
                 : "gold"
           }
         >
-          {value}
+          {value === MovimentacaoStatus.EM_TRANSITO ? "EM TRANSITO" : value}
         </Tag>
       ),
     },
@@ -585,12 +832,13 @@ export default function MovimentacoesPage() {
       title: "Criado em",
       dataIndex: "createdAt",
       key: "createdAt",
+      render: (value: string) => formatIsoDateTime(value),
     },
     {
-      title: "Acoes",
+      title: "Ações",
       key: "acoes",
       render: (_: unknown, record: Movimentacao) => (
-        <Space>
+        <Space wrap>
           <Popconfirm
             title="Marcar como Em transito?"
             onConfirm={() =>
@@ -602,22 +850,22 @@ export default function MovimentacoesPage() {
             <Button size="small">Em transito</Button>
           </Popconfirm>
           <Popconfirm
-            title="Concluir movimentacao?"
+            title="Concluir movimentação?"
             onConfirm={() =>
               void handleStatus(record.id, MovimentacaoStatus.CONCLUIDO)
             }
             okText="Sim"
-            cancelText="Nao"
+            cancelText="Não"
           >
             <Button size="small">Concluir</Button>
           </Popconfirm>
           <Popconfirm
-            title="Cancelar movimentacao?"
+            title="Cancelar movimentação?"
             onConfirm={() =>
               void handleStatus(record.id, MovimentacaoStatus.CANCELADO)
             }
             okText="Sim"
-            cancelText="Nao"
+            cancelText="Não"
           >
             <Button size="small" danger>
               Cancelar
@@ -627,125 +875,189 @@ export default function MovimentacoesPage() {
       ),
     },
   ];
+  const showPageSkeleton = loading && data.length === 0;
 
   return (
     <DefaultLayout>
       <FardamentosShell
-        title="Movimentacoes"
-        description="Gerencie entregas e devolucoes com reserva e baixa de estoque."
+        title="Movimentações"
+        description="Gerencie entregas e devoluções com reserva e baixa de estoque."
         actions={
-          <Space>
+          <Space wrap>
             <Button type="primary" onClick={() => setOpenEntrega(true)}>
               Nova entrega
             </Button>
             <Button onClick={() => setOpenDevolucao(true)}>
-              Nova devolucao
+              Nova devolução
             </Button>
           </Space>
         }
       >
         <SectionCard
-          title="Filtros"
-          description="Refine por colaborador, unidade, status e periodo."
+          title="Resumo das movimentações"
+          description="Filtre por colaborador, unidade, status e periodo."
           actions={
-            <Space>
-              <Input
-                placeholder="Buscar colaborador"
-                value={filters.q}
-                onChange={(e) => {
-                  setFilters({ ...filters, q: e.target.value });
-                  setPage(1);
-                }}
-                allowClear
-              />
-              <Select
-                placeholder="Unidade"
-                allowClear
-                value={filters.unidadeId}
-                onChange={(value) => {
-                  setFilters({ ...filters, unidadeId: value });
-                  setPage(1);
-                }}
-                showSearch
-                onSearch={(value) => {
-                  setUnidadesQuery(value);
-                  setUnidadesOffset(0);
-                  setUnidadesHasMore(true);
-                }}
-                onPopupScroll={(event) => {
-                  const target = event.target as HTMLDivElement;
-                  if (
-                    target.scrollTop + target.offsetHeight >=
-                    target.scrollHeight - 16
-                  ) {
-                    void loadMoreUnidades();
-                  }
-                }}
-                filterOption={false}
-                loading={unidadesLoading}
-                options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
-                style={{ minWidth: 180 }}
-              />
-              <Select
-                placeholder="Tipo"
-                allowClear
-                value={filters.tipo}
-                onChange={(value) => {
-                  setFilters({ ...filters, tipo: value });
-                  setPage(1);
-                }}
-                options={[
-                  { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
-                  { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
-                ]}
-                style={{ minWidth: 160 }}
-              />
-              <Select
-                placeholder="Status"
-                allowClear
-                value={filters.status}
-                onChange={(value) => {
-                  setFilters({ ...filters, status: value });
-                  setPage(1);
-                }}
-                options={[
-                  { label: "Separado", value: MovimentacaoStatus.SEPARADO },
-                  {
-                    label: "Em transito",
-                    value: MovimentacaoStatus.EM_TRANSITO,
-                  },
-                  { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
-                  { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
-                ]}
-                style={{ minWidth: 160 }}
-              />
-              <RangePicker
-                onChange={(dates) => {
-                  setFilters({
-                    ...filters,
-                    startDate: dates?.[0]?.toISOString(),
-                    endDate: dates?.[1]?.toISOString(),
-                  });
-                  setPage(1);
-                }}
-              />
-            </Space>
+            showPageSkeleton ? (
+              <Space wrap className="max-w-xl w-full">
+                <Skeleton.Input active className="w-full md:min-w-72" />
+                <Skeleton.Input active className="w-full md:min-w-45" />
+                <Skeleton.Input active className="w-full md:min-w-40" />
+                <Skeleton.Input active className="w-full md:min-w-40" />
+                <Skeleton.Input active className="w-full md:min-w-50" />
+              </Space>
+            ) : (
+              <Space wrap className="max-w-xl w-full">
+                <div className="w-full md:w-auto">
+                  <Input
+                    placeholder="Buscar colaborador"
+                    value={filters.q}
+                    onChange={(e) => {
+                      const nextFilters = { ...filters, q: e.target.value };
+                      setFilters(nextFilters);
+                      handleFiltersStateChange(nextFilters);
+                    }}
+                    allowClear
+                    className="w-full md:min-w-72"
+                  />
+                </div>
+                <div className="w-full md:w-auto">
+                  <Select
+                    placeholder="Unidade"
+                    allowClear
+                    value={filters.unidadeId}
+                    onChange={(value) => {
+                      const nextFilters = { ...filters, unidadeId: value };
+                      setFilters(nextFilters);
+                      handleFiltersStateChange(nextFilters);
+                    }}
+                    showSearch
+                    onSearch={(value) => {
+                      setUnidadesQuery(value);
+                      setUnidadesOffset(0);
+                      setUnidadesHasMore(true);
+                    }}
+                    onPopupScroll={(event) => {
+                      const target = event.target as HTMLDivElement;
+                      if (
+                        target.scrollTop + target.offsetHeight >=
+                        target.scrollHeight - 16
+                      ) {
+                        void loadMoreUnidades();
+                      }
+                    }}
+                    filterOption={false}
+                    loading={unidadesLoading}
+                    popupRender={(menu) => (
+                      <>
+                        {menu}
+                        {unidadesLoading ? (
+                          <div className="px-3 py-2 text-center">
+                            <Spin size="small" />
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                    options={unidades.map((u) => ({
+                      label: u.nome,
+                      value: u.id,
+                    }))}
+                    className="w-full md:min-w-45"
+                  />
+                </div>
+                <div className="w-full md:w-auto">
+                  <Select
+                    placeholder="Tipo"
+                    allowClear
+                    value={filters.tipo}
+                    onChange={(value) => {
+                      const nextFilters = { ...filters, tipo: value };
+                      setFilters(nextFilters);
+                      handleFiltersStateChange(nextFilters);
+                    }}
+                    options={[
+                      { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
+                      { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
+                    ]}
+                    className="w-full md:min-w-40"
+                  />
+                </div>
+                <div className="w-full md:w-auto">
+                  <Select
+                    placeholder="Status"
+                    allowClear
+                    value={filters.status}
+                    onChange={(value) => {
+                      const nextFilters = { ...filters, status: value };
+                      setFilters(nextFilters);
+                      handleFiltersStateChange(nextFilters);
+                    }}
+                    options={[
+                      { label: "Separado", value: MovimentacaoStatus.SEPARADO },
+                      {
+                        label: "Em transito",
+                        value: MovimentacaoStatus.EM_TRANSITO,
+                      },
+                      {
+                        label: "Concluido",
+                        value: MovimentacaoStatus.CONCLUIDO,
+                      },
+                      {
+                        label: "Cancelado",
+                        value: MovimentacaoStatus.CANCELADO,
+                      },
+                    ]}
+                    className="w-full md:min-w-40"
+                    style={{ minWidth: 120 }}
+                  />
+                </div>
+                <div className="w-full md:w-auto">
+                  <RangePicker
+                    format="DD/MM/YYYY"
+                    placeholder={["Data inicial", "Data final"]}
+                    onChange={(dates) => {
+                      const nextFilters = {
+                        ...filters,
+                        startDate: dates?.[0]?.toISOString(),
+                        endDate: dates?.[1]?.toISOString(),
+                      };
+                      setFilters(nextFilters);
+                      handleFiltersStateChange(nextFilters);
+                    }}
+                    className="w-full! max-w-60! md:min-w-50!"
+                  />
+                </div>
+              </Space>
+            )
           }
         >
-          <Table
-            rowKey="id"
-            columns={columns}
-            dataSource={data}
-            loading={loading}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (nextPage) => setPage(nextPage),
-              showSizeChanger: false,
-              showTotal: (value) => `Total: ${value}`,
-            }}
-          />
+          {showPageSkeleton ? (
+            <div className="space-y-3 rounded-lg border border-neutral-200/70 p-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton
+                  key={`mov-skeleton-${index}`}
+                  active
+                  title={false}
+                  paragraph={{ rows: 1, width: ["100%"] }}
+                />
+              ))}
+            </div>
+          ) : (
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={data}
+              loading={loading}
+              scroll={{ x: 980 }}
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: (nextPage) => setPage(nextPage),
+                showSizeChanger: false,
+                showTotal: (value) => `Total: ${value}`,
+              }}
+            />
+          )}
         </SectionCard>
 
         <MovimentacaoEntregaWizard
@@ -758,19 +1070,22 @@ export default function MovimentacoesPage() {
           unidades={unidades}
           variacoes={variacoes}
           variacaoOptionsFiltradas={variacaoOptionsFiltradas}
-          tamanhosDisponiveis={tamanhosDisponiveis}
+          tamanhosDisponiveis={entregaTamanhosDisponiveis}
           estoqueEntrega={estoqueEntrega}
           entregaUnidadeId={entregaUnidadeId}
+          entregaTipoId={entregaTipoId}
+          setEntregaTipoId={(value) => {
+            setEntregaTipoId(value);
+            setEntregaTamanho(null);
+          }}
+          tiposDisponiveis={entregaTiposDisponiveis}
           setEntregaUnidadeId={async (value) => {
             setEntregaUnidadeId(value);
+            setEntregaTipoId(null);
+            setEntregaTamanho(null);
             formEntrega.setFieldValue("unidadeId", value ?? undefined);
             if (value) {
-              const estoqueResult = await fetchEstoque({
-                unidadeId: value,
-                offset: 0,
-                limit: 10,
-              });
-              const estoqueUi = mapEstoqueToUi(estoqueResult.data);
+              const estoqueUi = await loadEstoqueByUnidade(value);
               setEstoqueEntrega(
                 estoqueUi.map((item) => ({
                   variacaoId: item.variacaoId,
@@ -790,7 +1105,20 @@ export default function MovimentacoesPage() {
           termosLoading={entregaTermosLoading}
           unidadesLoading={unidadesLoading}
           onUnidadesScroll={loadMoreUnidades}
+          variacoesLoading={variacoesLoading}
+          onVariacoesScroll={loadMoreVariacoes}
           onGerarTermo={handleGerarTermoEntrega}
+          onNovaEntrega={() => {
+            const unidadeIdAtual =
+              entregaUnidadeId ?? formEntrega.getFieldValue("unidadeId");
+            formEntrega.setFieldsValue({
+              unidadeId: unidadeIdAtual ?? undefined,
+              itens: [{ variacaoId: undefined, quantidade: 1 }],
+            });
+            setStepEntrega(0);
+            setEntregaMovimentacaoId(null);
+            setEntregaTermos([]);
+          }}
           onAbrirTermo={handleAbrirTermo}
           onBaixarTermo={handleBaixarTermo}
           onColaboradorSelect={(colaborador) => {
@@ -824,12 +1152,7 @@ export default function MovimentacoesPage() {
               if (currentUnidadeId) {
                 formEntrega.setFieldValue("unidadeId", currentUnidadeId);
                 setEntregaUnidadeId(currentUnidadeId);
-                const estoqueResult = await fetchEstoque({
-                  unidadeId: currentUnidadeId,
-                  offset: 0,
-                  limit: 10,
-                });
-                const estoqueUi = mapEstoqueToUi(estoqueResult.data);
+                const estoqueUi = await loadEstoqueByUnidade(currentUnidadeId);
                 setEstoqueEntrega(
                   estoqueUi.map((item) => ({
                     variacaoId: item.variacaoId,
@@ -853,6 +1176,7 @@ export default function MovimentacoesPage() {
             setEntregaColaborador(null);
             entregaColaboradorRef.current = null;
             setEntregaUnidadeId(null);
+            setEntregaTipoId(null);
             setEntregaGenero(null);
             setEntregaTamanho(null);
             setEntregaMovimentacaoId(null);
@@ -870,18 +1194,21 @@ export default function MovimentacoesPage() {
           unidades={unidades}
           variacoes={variacoes}
           variacaoOptionsDevolucao={variacaoOptionsDevolucao}
-          tamanhosDisponiveis={tamanhosDisponiveis}
+          tamanhosDisponiveis={devolucaoTamanhosDisponiveis}
           devolucaoUnidadeId={devolucaoUnidadeId}
+          devolucaoTipoId={devolucaoTipoId}
+          setDevolucaoTipoId={(value) => {
+            setDevolucaoTipoId(value);
+            setDevolucaoTamanho(null);
+          }}
+          tiposDisponiveis={devolucaoTiposDisponiveis}
           setDevolucaoUnidadeId={async (value) => {
             setDevolucaoUnidadeId(value);
+            setDevolucaoTipoId(null);
+            setDevolucaoTamanho(null);
             formDevolucao.setFieldValue("unidadeId", value ?? undefined);
             if (value) {
-              const estoqueResult = await fetchEstoque({
-                unidadeId: value,
-                offset: 0,
-                limit: 10,
-              });
-              const estoqueUi = mapEstoqueToUi(estoqueResult.data);
+              const estoqueUi = await loadEstoqueByUnidade(value);
               setDevolucaoEstoqueIds(estoqueUi.map((item) => item.variacaoId));
             } else {
               setDevolucaoEstoqueIds([]);
@@ -894,17 +1221,17 @@ export default function MovimentacoesPage() {
           devolucaoEstoqueIds={devolucaoEstoqueIds}
           variacoesDevolucaoFiltradas={variacoesDevolucaoFiltradas}
           saldos={saldosDevolucaoFiltrados}
+          saldosTotais={devolucaoSaldos}
           saldosLoading={devolucaoSaldosLoading}
           unidadesLoading={unidadesLoading}
           onUnidadesScroll={loadMoreUnidades}
+          variacoesLoading={variacoesLoading}
+          onVariacoesScroll={loadMoreVariacoes}
           termos={devolucaoTermos}
           termosLoading={devolucaoTermosLoading}
-          avariasRegistradas={devolucaoAvarias}
-          avariasLoading={devolucaoAvariasLoading}
           onGerarTermo={handleGerarTermoDevolucao}
           onAbrirTermo={handleAbrirTermo}
           onBaixarTermo={handleBaixarTermo}
-          onRegistrarAvarias={handleRegistrarAvarias}
           onColaboradorSelect={(colaborador) => {
             setDevolucaoColaborador(colaborador);
             devolucaoColaboradorRef.current = colaborador;
@@ -914,6 +1241,7 @@ export default function MovimentacoesPage() {
               await formDevolucao.validateFields(["colaboradorId"]);
               const colabId = formDevolucao.getFieldValue("colaboradorId");
               const colabNome = formDevolucao.getFieldValue("colaboradorNome");
+              let saldosColaborador = devolucaoSaldos;
               if (colabId) {
                 const stored = {
                   id: String(colabId),
@@ -921,7 +1249,26 @@ export default function MovimentacoesPage() {
                 };
                 setDevolucaoColaborador(stored);
                 devolucaoColaboradorRef.current = stored;
+                setDevolucaoSaldosLoading(true);
+                try {
+                  saldosColaborador = await fetchColaboradorSaldos(stored.id);
+                  setDevolucaoSaldos(saldosColaborador);
+                } finally {
+                  setDevolucaoSaldosLoading(false);
+                }
               }
+              const itensPreenchidos = saldosColaborador
+                .filter((saldo) => saldo.quantidade > 0)
+                .map((saldo) => ({
+                  variacaoId: saldo.variacaoId,
+                  quantidade: saldo.quantidade,
+                }));
+              formDevolucao.setFieldValue(
+                "itens",
+                itensPreenchidos.length
+                  ? itensPreenchidos
+                  : [{ variacaoId: undefined, quantidade: 1 }],
+              );
               if (devolucaoUnidadeId) {
                 formDevolucao.setFieldValue("unidadeId", devolucaoUnidadeId);
               }
@@ -940,32 +1287,16 @@ export default function MovimentacoesPage() {
             setDevolucaoColaborador(null);
             devolucaoColaboradorRef.current = null;
             setDevolucaoUnidadeId(null);
+            setDevolucaoTipoId(null);
             setDevolucaoGenero(null);
             setDevolucaoTamanho(null);
             setDevolucaoEstoqueIds([]);
             setDevolucaoSaldos([]);
             setDevolucaoMovimentacaoId(null);
             setDevolucaoTermos([]);
-            setDevolucaoAvarias([]);
           }}
         />
       </FardamentosShell>
     </DefaultLayout>
   );
-}
-
-function b64toBlob(b64Data: string, contentType: string) {
-  const byteCharacters = atob(b64Data);
-  const byteArrays = [];
-
-  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    byteArrays.push(new Uint8Array(byteNumbers));
-  }
-
-  return new Blob(byteArrays, { type: contentType });
 }

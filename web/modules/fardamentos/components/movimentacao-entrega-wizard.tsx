@@ -9,11 +9,13 @@ import {
   Modal,
   Select,
   Space,
+  Spin,
   Steps,
   Table,
   Typography,
 } from "antd";
 import type { FormInstance } from "antd/es/form";
+import { formatIsoDateTime } from "@/shared/formatters/date";
 import type { Variacao, Unidade } from "../types/fardamentos.types";
 import { Genero } from "../types/genero.enums";
 import type { TermoInfo } from "../types/termos.types";
@@ -34,6 +36,9 @@ type EntregaWizardProps = {
   estoqueEntrega: { variacaoId: string; total: number; reservado: number }[];
   entregaUnidadeId: string | null;
   setEntregaUnidadeId: (value: string | null) => void | Promise<void>;
+  entregaTipoId: string | null;
+  setEntregaTipoId: (value: string | null) => void;
+  tiposDisponiveis: { label: string; value: string }[];
   entregaGenero: Genero | null;
   setEntregaGenero: (value: Genero | null) => void;
   entregaTamanho: string | null;
@@ -42,7 +47,10 @@ type EntregaWizardProps = {
   termosLoading: boolean;
   unidadesLoading?: boolean;
   onUnidadesScroll?: () => void;
+  variacoesLoading?: boolean;
+  onVariacoesScroll?: () => void;
   onGerarTermo: () => void;
+  onNovaEntrega: () => void;
   onAbrirTermo: (id: string) => void;
   onBaixarTermo: (id: string) => void;
   onAdvance: () => Promise<void>;
@@ -65,6 +73,9 @@ export function MovimentacaoEntregaWizard({
   estoqueEntrega,
   entregaUnidadeId,
   setEntregaUnidadeId,
+  entregaTipoId,
+  setEntregaTipoId,
+  tiposDisponiveis,
   entregaGenero,
   setEntregaGenero,
   entregaTamanho,
@@ -73,7 +84,10 @@ export function MovimentacaoEntregaWizard({
   termosLoading,
   unidadesLoading,
   onUnidadesScroll,
+  variacoesLoading,
+  onVariacoesScroll,
   onGerarTermo,
+  onNovaEntrega,
   onAbrirTermo,
   onBaixarTermo,
   onAdvance,
@@ -85,7 +99,12 @@ export function MovimentacaoEntregaWizard({
     { title: "Versao", dataIndex: "versao", key: "versao" },
     { title: "Tipo", dataIndex: "tipo", key: "tipo" },
     { title: "Gerado por", dataIndex: "usuarioNome", key: "usuarioNome" },
-    { title: "Criado em", dataIndex: "createdAt", key: "createdAt" },
+    {
+      title: "Criado em",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (value: string) => formatIsoDateTime(value),
+    },
     {
       title: "Acoes",
       key: "acoes",
@@ -107,22 +126,28 @@ export function MovimentacaoEntregaWizard({
       open={open}
       onCancel={onCancel}
       title="Nova entrega"
+      width={700}
+      styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
       footer={
-        <Space>
-          <Button onClick={onCancel}>Cancelar</Button>
+        <Space wrap>
           {step > 0 && step < 2 ? (
             <Button onClick={() => setStep(step - 1)}>Voltar</Button>
           ) : null}
           {step < 1 ? (
             <Button type="primary" onClick={onAdvance}>
-              Avancar
+              Avançar
             </Button>
           ) : step === 1 ? (
             <Button type="primary" loading={saving} onClick={onConfirm}>
               Confirmar entrega
             </Button>
           ) : (
-            <Button onClick={onCancel}>Fechar</Button>
+            <>
+              <Button type="primary" onClick={onNovaEntrega}>
+                Nova entrega
+              </Button>
+              <Button onClick={onCancel}>Fechar</Button>
+            </>
           )}
         </Space>
       }
@@ -136,7 +161,7 @@ export function MovimentacaoEntregaWizard({
           { title: "Termo" },
         ]}
       />
-      <Form layout="vertical" form={form} className="mt-4">
+      <Form layout="vertical" form={form} className="mt-4!">
         {step === 0 ? (
           <>
             <Form.Item
@@ -174,6 +199,9 @@ export function MovimentacaoEntregaWizard({
           </>
         ) : step === 1 ? (
           <>
+            <Form.Item name="colaboradorNome" label="Colaborador">
+              <Input disabled />
+            </Form.Item>
             <div className="flex flex-wrap gap-2">
               <Select
                 placeholder="Unidade"
@@ -191,14 +219,32 @@ export function MovimentacaoEntregaWizard({
                   }
                 }}
                 loading={unidadesLoading}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    {unidadesLoading ? (
+                      <div className="px-3 py-2 text-center">
+                        <Spin size="small" />
+                      </div>
+                    ) : null}
+                  </>
+                )}
                 options={unidades.map((u) => ({
                   label: u.nome,
                   value: u.id,
                 }))}
-                style={{ minWidth: 180 }}
+                className="w-full sm:min-w-45 sm:w-auto"
               />
               <Select
-                placeholder="Genero"
+                placeholder="Tipo"
+                allowClear
+                value={entregaTipoId ?? undefined}
+                onChange={(value) => setEntregaTipoId(value ?? null)}
+                options={tiposDisponiveis}
+                className="w-full sm:min-w-45 sm:w-auto"
+              />
+              <Select
+                placeholder="Gênero"
                 allowClear
                 value={entregaGenero ?? undefined}
                 onChange={(value) => setEntregaGenero(value ?? null)}
@@ -207,7 +253,7 @@ export function MovimentacaoEntregaWizard({
                   { label: "Feminino", value: Genero.FEMININO },
                   { label: "Unissex", value: Genero.UNISSEX },
                 ]}
-                style={{ minWidth: 160 }}
+                className="w-full sm:min-w-40 sm:w-auto"
               />
               <Select
                 placeholder="Tamanho"
@@ -218,7 +264,7 @@ export function MovimentacaoEntregaWizard({
                   label: tamanho,
                   value: tamanho,
                 }))}
-                style={{ minWidth: 140 }}
+                className="w-full sm:min-w-35 sm:w-auto"
               />
             </div>
             <Divider className="my-4">Itens</Divider>
@@ -230,27 +276,60 @@ export function MovimentacaoEntregaWizard({
                 {(fields, { add, remove }) => (
                   <div className="space-y-2">
                     {fields.map((field) => (
-                      <Space key={field.key} align="baseline">
+                      <div
+                        key={field.key}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-baseline"
+                      >
                         <Form.Item
                           name={[field.name, "variacaoId"]}
-                          rules={[{ required: true }]}
+                          rules={[
+                            {
+                              required: true,
+                              message: "Selecione uma variação.",
+                            },
+                          ]}
                         >
                           <Select
                             placeholder="Variacao"
                             options={variacaoOptionsFiltradas}
-                            style={{ minWidth: 200 }}
+                            onPopupScroll={(event) => {
+                              if (!onVariacoesScroll) return;
+                              const target = event.target as HTMLDivElement;
+                              if (
+                                target.scrollTop + target.offsetHeight >=
+                                target.scrollHeight - 16
+                              ) {
+                                onVariacoesScroll();
+                              }
+                            }}
+                            popupRender={(menu) => (
+                              <>
+                                {menu}
+                                {variacoesLoading ? (
+                                  <div className="px-3 py-2 text-center">
+                                    <Spin size="small" />
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                            className="w-full sm:min-w-60"
                           />
                         </Form.Item>
                         <Form.Item
                           name={[field.name, "quantidade"]}
-                          rules={[{ required: true }]}
+                          rules={[
+                            {
+                              required: true,
+                              message: "Informe a quantidade.",
+                            },
+                          ]}
                         >
-                          <Input type="number" min={1} />
+                          <Input type="number" min={1} className="w-full" />
                         </Form.Item>
                         <Button onClick={() => remove(field.name)}>
                           Remover
                         </Button>
-                      </Space>
+                      </div>
                     ))}
                     <Button onClick={() => add()}>Adicionar item</Button>
                   </div>
@@ -293,6 +372,7 @@ export function MovimentacaoEntregaWizard({
                   <Table
                     size="small"
                     pagination={false}
+                    scroll={{ x: 640 }}
                     rowKey="variacaoId"
                     dataSource={estoqueEntrega.filter((item) => {
                       const variacao = variacoes.find(
@@ -332,8 +412,10 @@ export function MovimentacaoEntregaWizard({
                       {
                         title: "Disponivel",
                         key: "disponivel",
-                        render: (_: unknown, record: any) =>
-                          record.total - record.reservado,
+                        render: (
+                          _: unknown,
+                          record: { total: number; reservado: number },
+                        ) => record.total - record.reservado,
                       },
                     ]}
                   />
@@ -343,19 +425,19 @@ export function MovimentacaoEntregaWizard({
           </>
         ) : (
           <>
-            <Typography.Text className="text-sm text-neutral-600">
+            <Typography.Text className="text-sm text-neutral-600 mt-2!">
               Registro criado. Gere um termo para esta entrega.
             </Typography.Text>
-            <div className="mt-4">
+            <div className="mt-2 space-x-2!">
               <Button
                 type="primary"
                 loading={termosLoading}
                 onClick={onGerarTermo}
+                disabled={termos.length > 0}
               >
                 Gerar termo
               </Button>
               <Button
-                className="ml-2"
                 onClick={() => {
                   const ultimo = termos[0];
                   if (ultimo) onAbrirTermo(ultimo.id);
@@ -372,6 +454,7 @@ export function MovimentacaoEntregaWizard({
               dataSource={termos}
               loading={termosLoading}
               pagination={false}
+              scroll={{ x: 720 }}
             />
           </>
         )}

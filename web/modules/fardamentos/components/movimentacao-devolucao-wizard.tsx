@@ -10,16 +10,17 @@ import {
   Popconfirm,
   Select,
   Space,
+  Spin,
   Steps,
   Table,
   Typography,
 } from "antd";
 import type { FormInstance } from "antd/es/form";
+import { formatIsoDateTime } from "@/shared/formatters/date";
 import type { Unidade, Variacao } from "../types/fardamentos.types";
 import { Genero } from "../types/genero.enums";
 import type { TermoInfo } from "../types/termos.types";
 import type { ColaboradorSaldo } from "../types/saldos.types";
-import type { Avaria, CreateAvariaItem } from "../types/avarias.types";
 
 type ColaboradorOption = { id: string; nome: string };
 
@@ -36,6 +37,9 @@ type DevolucaoWizardProps = {
   tamanhosDisponiveis: string[];
   devolucaoUnidadeId: string | null;
   setDevolucaoUnidadeId: (value: string | null) => void | Promise<void>;
+  devolucaoTipoId: string | null;
+  setDevolucaoTipoId: (value: string | null) => void;
+  tiposDisponiveis: { label: string; value: string }[];
   devolucaoGenero: Genero | null;
   setDevolucaoGenero: (value: Genero | null) => void;
   devolucaoTamanho: string | null;
@@ -43,17 +47,17 @@ type DevolucaoWizardProps = {
   devolucaoEstoqueIds: string[];
   variacoesDevolucaoFiltradas: Variacao[];
   saldos: ColaboradorSaldo[];
+  saldosTotais: ColaboradorSaldo[];
   saldosLoading: boolean;
   unidadesLoading?: boolean;
   onUnidadesScroll?: () => void;
+  variacoesLoading?: boolean;
+  onVariacoesScroll?: () => void;
   termos: TermoInfo[];
   termosLoading: boolean;
-  avariasRegistradas: Avaria[];
-  avariasLoading: boolean;
   onGerarTermo: () => void;
   onAbrirTermo: (id: string) => void;
   onBaixarTermo: (id: string) => void;
-  onRegistrarAvarias: (itens: CreateAvariaItem[]) => void;
   onAdvance: () => Promise<void>;
   onConfirm: () => void;
   onForceConfirm: () => void;
@@ -73,6 +77,9 @@ export function MovimentacaoDevolucaoWizard({
   tamanhosDisponiveis,
   devolucaoUnidadeId,
   setDevolucaoUnidadeId,
+  devolucaoTipoId,
+  setDevolucaoTipoId,
+  tiposDisponiveis,
   devolucaoGenero,
   setDevolucaoGenero,
   devolucaoTamanho,
@@ -80,30 +87,49 @@ export function MovimentacaoDevolucaoWizard({
   devolucaoEstoqueIds,
   variacoesDevolucaoFiltradas,
   saldos,
+  saldosTotais,
   saldosLoading,
   unidadesLoading,
   onUnidadesScroll,
+  variacoesLoading,
+  onVariacoesScroll,
   termos,
   termosLoading,
-  avariasRegistradas,
-  avariasLoading,
   onGerarTermo,
   onAbrirTermo,
   onBaixarTermo,
-  onRegistrarAvarias,
   onAdvance,
   onConfirm,
   onForceConfirm,
   onCancel,
   onColaboradorSelect,
 }: DevolucaoWizardProps) {
+  const handleDevolverTudo = () => {
+    const itens = saldosTotais
+      .filter((saldo) => saldo.quantidade > 0)
+      .map((saldo) => ({
+        variacaoId: saldo.variacaoId,
+        quantidade: saldo.quantidade,
+      }));
+
+    form.setFieldValue(
+      "itens",
+      itens.length ? itens : [{ variacaoId: undefined, quantidade: 1 }],
+    );
+  };
+
   const termoColumns = [
-    { title: "Versao", dataIndex: "versao", key: "versao" },
+    { title: "Versão", dataIndex: "versao", key: "versao" },
     { title: "Tipo", dataIndex: "tipo", key: "tipo" },
     { title: "Gerado por", dataIndex: "usuarioNome", key: "usuarioNome" },
-    { title: "Criado em", dataIndex: "createdAt", key: "createdAt" },
     {
-      title: "Acoes",
+      title: "Criado em",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (value: string) => formatIsoDateTime(value),
+    },
+    {
+      title: "Ações",
       key: "acoes",
       render: (_: unknown, record: TermoInfo) => (
         <Space>
@@ -118,43 +144,36 @@ export function MovimentacaoDevolucaoWizard({
     },
   ];
 
-  const handleRegistrarAvarias = async () => {
-    const values = await form.validateFields(["avarias"]);
-    const itens = (values.avarias ?? []).filter(
-      (item: CreateAvariaItem | undefined) =>
-        item?.variacaoId && Number(item?.quantidade ?? 0) > 0,
-    );
-    onRegistrarAvarias(itens);
-  };
-
   return (
     <Modal
       open={open}
       onCancel={onCancel}
-      title="Nova devolucao"
+      title="Nova devolução"
+      width={700}
+      styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
       footer={
-        <Space>
+        <Space wrap>
           <Button onClick={onCancel}>Cancelar</Button>
           {step > 0 && step < 2 ? (
             <Button onClick={() => setStep(step - 1)}>Voltar</Button>
           ) : null}
           {step < 1 ? (
             <Button type="primary" onClick={onAdvance}>
-              Avancar
+              Avançar
             </Button>
           ) : step === 1 ? (
             <>
               <Button type="primary" loading={saving} onClick={onConfirm}>
-                Confirmar devolucao
+                Confirmar devolução
               </Button>
               <Popconfirm
-                title="Forcar devolucao?"
+                title="Forcar devolução?"
                 description="Ignora o saldo em posse do colaborador."
-                okText="Forcar"
+                okText="Forçar"
                 cancelText="Cancelar"
                 onConfirm={onForceConfirm}
               >
-                <Button danger>Forcar devolucao</Button>
+                <Button danger>Forçar devolução</Button>
               </Popconfirm>
             </>
           ) : (
@@ -172,7 +191,7 @@ export function MovimentacaoDevolucaoWizard({
           { title: "Termo" },
         ]}
       />
-      <Form layout="vertical" form={form} className="mt-4">
+      <Form layout="vertical" form={form} className="mt-4!">
         {step === 0 ? (
           <>
             <Form.Item
@@ -227,11 +246,29 @@ export function MovimentacaoDevolucaoWizard({
                   }
                 }}
                 loading={unidadesLoading}
+                popupRender={(menu) => (
+                  <>
+                    {menu}
+                    {unidadesLoading ? (
+                      <div className="px-3 py-2 text-center">
+                        <Spin size="small" />
+                      </div>
+                    ) : null}
+                  </>
+                )}
                 options={unidades.map((u) => ({
                   label: u.nome,
                   value: u.id,
                 }))}
-                style={{ minWidth: 180 }}
+                className="w-full sm:min-w-[180px] sm:w-auto"
+              />
+              <Select
+                placeholder="Tipo"
+                allowClear
+                value={devolucaoTipoId ?? undefined}
+                onChange={(value) => setDevolucaoTipoId(value ?? null)}
+                options={tiposDisponiveis}
+                className="w-full sm:min-w-[180px] sm:w-auto"
               />
               <Select
                 placeholder="Genero"
@@ -243,7 +280,7 @@ export function MovimentacaoDevolucaoWizard({
                   { label: "Feminino", value: Genero.FEMININO },
                   { label: "Unissex", value: Genero.UNISSEX },
                 ]}
-                style={{ minWidth: 160 }}
+                className="w-full sm:min-w-[160px] sm:w-auto"
               />
               <Select
                 placeholder="Tamanho"
@@ -254,31 +291,7 @@ export function MovimentacaoDevolucaoWizard({
                   label: tamanho,
                   value: tamanho,
                 }))}
-                style={{ minWidth: 140 }}
-              />
-            </div>
-            <Divider className="my-4">Em posse</Divider>
-            <div className="max-h-44 overflow-y-auto pr-1">
-              <Table
-                size="small"
-                pagination={false}
-                rowKey="id"
-                loading={saldosLoading}
-                dataSource={saldos}
-                columns={[
-                  {
-                    title: "Variacao",
-                    dataIndex: "variacaoId",
-                    key: "variacaoId",
-                    render: (_: string, record: ColaboradorSaldo) =>
-                      `${record.tipoNome} - ${record.tamanho} - ${record.genero}`,
-                  },
-                  {
-                    title: "Quantidade",
-                    dataIndex: "quantidade",
-                    key: "quantidade",
-                  },
-                ]}
+                className="w-full sm:min-w-35 sm:w-auto"
               />
             </div>
             <Divider className="my-4">Itens</Divider>
@@ -290,7 +303,10 @@ export function MovimentacaoDevolucaoWizard({
                 {(fields, { add, remove }) => (
                   <div className="space-y-2">
                     {fields.map((field) => (
-                      <Space key={field.key} align="baseline">
+                      <div
+                        key={field.key}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-baseline"
+                      >
                         <Form.Item
                           name={[field.name, "variacaoId"]}
                           rules={[{ required: true }]}
@@ -298,21 +314,52 @@ export function MovimentacaoDevolucaoWizard({
                           <Select
                             placeholder="Variacao"
                             options={variacaoOptionsDevolucao}
-                            style={{ minWidth: 200 }}
+                            onPopupScroll={(event) => {
+                              if (!onVariacoesScroll) return;
+                              const target = event.target as HTMLDivElement;
+                              if (
+                                target.scrollTop + target.offsetHeight >=
+                                target.scrollHeight - 16
+                              ) {
+                                onVariacoesScroll();
+                              }
+                            }}
+                            popupRender={(menu) => (
+                              <>
+                                {menu}
+                                {variacoesLoading ? (
+                                  <div className="px-3 py-2 text-center">
+                                    <Spin size="small" />
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
+                            className="w-full sm:min-w-60"
                           />
                         </Form.Item>
                         <Form.Item
                           name={[field.name, "quantidade"]}
                           rules={[{ required: true }]}
                         >
-                          <Input type="number" min={1} />
+                          <Input type="number" min={1} className="w-full" />
                         </Form.Item>
                         <Button onClick={() => remove(field.name)}>
                           Remover
                         </Button>
-                      </Space>
+                      </div>
                     ))}
-                    <Button onClick={() => add()}>Adicionar item</Button>
+                    <Space wrap>
+                      <Button onClick={() => add()}>Adicionar item</Button>
+                      <Button
+                        onClick={handleDevolverTudo}
+                        disabled={
+                          saldosTotais.filter((saldo) => saldo.quantidade > 0)
+                            .length === 0
+                        }
+                      >
+                        Devolver tudo em posse
+                      </Button>
+                    </Space>
                     {devolucaoUnidadeId && devolucaoEstoqueIds.length === 0 ? (
                       <Alert
                         className="mt-2"
@@ -332,17 +379,43 @@ export function MovimentacaoDevolucaoWizard({
                 )}
               </Form.List>
             </div>
+            <Divider className="my-4">Em posse</Divider>
+            <div className="max-h-44 overflow-y-auto pr-1">
+              <Table
+                size="small"
+                pagination={false}
+                scroll={{ x: 640 }}
+                rowKey="id"
+                loading={saldosLoading}
+                dataSource={saldos}
+                columns={[
+                  {
+                    title: "Variacao",
+                    dataIndex: "variacaoId",
+                    key: "variacaoId",
+                    render: (_: string, record: ColaboradorSaldo) =>
+                      `${record.tipoNome} - ${record.tamanho} - ${record.genero}`,
+                  },
+                  {
+                    title: "Quantidade",
+                    dataIndex: "quantidade",
+                    key: "quantidade",
+                  },
+                ]}
+              />
+            </div>
           </>
         ) : (
           <>
             <Typography.Text className="text-sm text-neutral-600">
               Registro criado. Gere um termo para esta devolucao.
             </Typography.Text>
-            <div className="mt-4">
+            <div className="mt-4 space-x-4!">
               <Button
                 type="primary"
                 loading={termosLoading}
                 onClick={onGerarTermo}
+                disabled={termos.length > 0}
               >
                 Gerar termo
               </Button>
@@ -354,7 +427,7 @@ export function MovimentacaoDevolucaoWizard({
                 }}
                 disabled={!termos.length}
               >
-                Abrir ultimo termo
+                Abrir último termo
               </Button>
             </div>
             <Table
@@ -364,81 +437,8 @@ export function MovimentacaoDevolucaoWizard({
               dataSource={termos}
               loading={termosLoading}
               pagination={false}
+              scroll={{ x: 720 }}
             />
-            <Divider className="my-4">Avarias</Divider>
-            <Typography.Text className="text-xs text-neutral-500">
-              Itens avariados nao retornam ao estoque utilizavel.
-            </Typography.Text>
-            <div className="mt-3 space-y-3">
-              <Form.List name="avarias" initialValue={[]}>
-                {(fields, { add, remove }) => (
-                  <div className="space-y-2">
-                    {fields.map((field) => (
-                      <Space key={field.key} align="baseline">
-                        <Form.Item
-                          name={[field.name, "variacaoId"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Select
-                            placeholder="Variacao"
-                            options={variacaoOptionsDevolucao}
-                            style={{ minWidth: 220 }}
-                          />
-                        </Form.Item>
-                        <Form.Item
-                          name={[field.name, "quantidade"]}
-                          rules={[{ required: true }]}
-                        >
-                          <Input type="number" min={1} />
-                        </Form.Item>
-                        <Form.Item name={[field.name, "descricao"]}>
-                          <Input placeholder="Descricao (opcional)" />
-                        </Form.Item>
-                        <Button onClick={() => remove(field.name)}>
-                          Remover
-                        </Button>
-                      </Space>
-                    ))}
-                    <Button onClick={() => add()}>Adicionar avaria</Button>
-                  </div>
-                )}
-              </Form.List>
-              <div>
-                <Button
-                  type="primary"
-                  onClick={handleRegistrarAvarias}
-                  loading={avariasLoading}
-                >
-                  Registrar avarias
-                </Button>
-              </div>
-              {avariasRegistradas.length ? (
-                <Table
-                  size="small"
-                  rowKey="id"
-                  pagination={false}
-                  dataSource={avariasRegistradas}
-                  columns={[
-                    {
-                      title: "Variacao",
-                      dataIndex: "variacaoLabel",
-                      key: "variacaoLabel",
-                    },
-                    {
-                      title: "Quantidade",
-                      dataIndex: "quantidade",
-                      key: "quantidade",
-                    },
-                    {
-                      title: "Descricao",
-                      dataIndex: "descricao",
-                      key: "descricao",
-                      render: (value: string | null) => value ?? "-",
-                    },
-                  ]}
-                />
-              ) : null}
-            </div>
           </>
         )}
       </Form>
