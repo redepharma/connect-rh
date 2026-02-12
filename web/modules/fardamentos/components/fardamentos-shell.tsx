@@ -38,13 +38,14 @@ export function FardamentosShell({
         <header className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <Typography.Title level={2} className="mb-1! mt-0!">
+              <Typography.Title
+                level={2}
+                className="mb-1! mt-0! text-neutral-700!"
+              >
                 {title}
               </Typography.Title>
               {description ? (
-                <Typography.Text className="text-sm text-neutral-500">
-                  {description}
-                </Typography.Text>
+                <Typography.Text>{description}</Typography.Text>
               ) : null}
             </div>
             <Space wrap>{actions}</Space>

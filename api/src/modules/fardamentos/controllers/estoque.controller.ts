@@ -1,6 +1,15 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { EstoqueService } from '../services/estoque.service';
 import { EstoqueQueryDto } from '../dto/estoque-query.dto';
+import { CreateEstoqueDto } from '../dto/create-estoque.dto';
 import { PoliciesGuard } from '../../auth/casl/policies.guard';
 import { CheckPolicies } from '../../auth/casl/policies.decorator';
 import type { AppAbility } from '../../auth/casl/casl.types';
@@ -14,6 +23,12 @@ export class EstoqueController {
   @CheckPolicies((ability: AppAbility) => ability.can('read', 'Estoque'))
   findAll(@Query() query: EstoqueQueryDto) {
     return this.estoqueService.findAll(query);
+  }
+
+  @Post()
+  @CheckPolicies((ability: AppAbility) => ability.can('manage', 'Estoque'))
+  create(@Body() dto: CreateEstoqueDto) {
+    return this.estoqueService.create(dto);
   }
 
   @Get(':id')

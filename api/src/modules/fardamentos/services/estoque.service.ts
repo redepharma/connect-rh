@@ -1,15 +1,86 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EstoqueEntity } from '../entities/estoque.entity';
 import { EstoqueQueryDto } from '../dto/estoque-query.dto';
+import { VariacaoEntity } from '../entities/variacao.entity';
+import { UnidadeEntity } from '../entities/unidade.entity';
+import { CreateEstoqueDto } from '../dto/create-estoque.dto';
 
 @Injectable()
 export class EstoqueService {
   constructor(
     @InjectRepository(EstoqueEntity, 'primary')
     private readonly estoqueRepository: Repository<EstoqueEntity>,
+    @InjectRepository(VariacaoEntity, 'primary')
+    private readonly variacoesRepository: Repository<VariacaoEntity>,
+    @InjectRepository(UnidadeEntity, 'primary')
+    private readonly unidadesRepository: Repository<UnidadeEntity>,
   ) {}
+
+  async create(dto: CreateEstoqueDto): Promise<EstoqueEntity> {
+    const variacao = await this.variacoesRepository.findOne({
+      where: { id: dto.variacaoId },
+      relations: ['tipo'],
+    });
+
+    if (!variacao) {
+      throw new NotFoundException('Variação não encontrada');
+    }
+
+    const unidade = await this.unidadesRepository.findOne({
+      where: { id: dto.unidadeId },
+    });
+
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+
+    const tipoDisponivelNaUnidade = await this.unidadesRepository
+      .createQueryBuilder('unidade')
+      .innerJoin(
+        'tipo_unidades',
+        'tipoUnidade',
+        'tipoUnidade.unidade_id = unidade.id',
+      )
+      .where('unidade.id = :unidadeId', { unidadeId: unidade.id })
+      .andWhere('tipoUnidade.tipo_id = :tipoId', { tipoId: variacao.tipo.id })
+      .getExists();
+
+    if (!tipoDisponivelNaUnidade) {
+      throw new ConflictException(
+        'A variação selecionada pertence a um tipo não vinculado à unidade informada.',
+      );
+    }
+
+    const existing = await this.estoqueRepository.findOne({
+      where: {
+        variacao: { id: dto.variacaoId },
+        unidade: { id: dto.unidadeId },
+      },
+      relations: ['variacao', 'unidade'],
+    });
+
+    const total = dto.total ?? 0;
+
+    if (existing) {
+      existing.total += total;
+      return this.estoqueRepository.save(existing);
+    }
+
+    const estoque = this.estoqueRepository.create({
+      variacao,
+      unidade,
+      total,
+      reservado: 0,
+    });
+
+    return this.estoqueRepository.save(estoque);
+  }
 
   async findAll(query: EstoqueQueryDto): Promise<{
     data: EstoqueEntity[];

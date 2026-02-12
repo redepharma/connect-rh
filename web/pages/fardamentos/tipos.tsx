@@ -302,7 +302,7 @@ export default function TiposPage() {
                     filterOption={false}
                     loading={unidadesLoading}
                     disabled={loading || saving}
-                    dropdownRender={(menu) => (
+                    popupRender={(menu) => (
                       <>
                         {menu}
                         {unidadesLoading ? (

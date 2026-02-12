@@ -1,4 +1,4 @@
-import { Button, Form, Input, Select, Space, Spin } from "antd";
+import { Button, Form, Input, Select, Skeleton, Space, Spin } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -41,6 +41,7 @@ export default function VariacoesPage() {
   const [saveAndCreateAnother, setSaveAndCreateAnother] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+  const showPageSkeleton = loading && data.length === 0;
   const pageBeforeFilterRef = useRef<number>(1);
   const normalizeText = (value: unknown) => String(value ?? "").trim();
   const parseTamanhos = (value: unknown) =>
@@ -261,68 +262,83 @@ export default function VariacoesPage() {
           title="Variações cadastradas"
           description="As variações definem o estoque controlado e disponibilidade."
           actions={
-            <Space className="w-full sm:w-auto" wrap>
-              <div className="w-full sm:w-auto">
-                <Input
-                  placeholder="Buscar variação"
-                  value={query}
-                  onChange={(event) => {
-                    const nextQuery = event.target.value;
-                    setQuery(nextQuery);
-                    handleFilterStateChange(nextQuery, tipoId);
-                  }}
-                  allowClear
-                  disabled={loading || saving}
-                  className="w-full sm:min-w-72"
+            showPageSkeleton ? (
+              <Space className="w-full sm:w-auto">
+                <Skeleton.Input
+                  active
+                  size="small"
+                  style={{ width: 280, maxWidth: "100%" }}
                 />
-              </div>
-              <div className="w-full sm:w-auto">
-                <Select
-                  placeholder="Filtrar tipo"
-                  value={tipoId}
-                  allowClear
-                  onChange={(value) => {
-                    const nextTipoId = value;
-                    setTipoId(nextTipoId);
-                    handleFilterStateChange(query, nextTipoId);
-                  }}
-                  showSearch
-                  onSearch={(value) => {
-                    setTiposQuery(value);
-                    setTiposOffset(0);
-                    setTiposHasMore(true);
-                  }}
-                  onPopupScroll={(event) => {
-                    const target = event.target as HTMLDivElement;
-                    if (
-                      target.scrollTop + target.offsetHeight >=
-                      target.scrollHeight - 16
-                    ) {
-                      void loadMoreTipos();
-                    }
-                  }}
-                  filterOption={false}
-                  loading={tiposLoading}
-                  disabled={loading || saving}
-                  dropdownRender={(menu) => (
-                    <>
-                      {menu}
-                      {tiposLoading ? (
-                        <div className="px-3 py-2 text-center text-xs text-neutral-500">
-                          <Spin size="small" />{" "}
-                          <span className="ml-2">Carregando mais...</span>
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                  options={tipos.map((tipo) => ({
-                    label: tipo.nome,
-                    value: tipo.id,
-                  }))}
-                  className="w-full sm:min-w-[200px]"
+                <Skeleton.Input
+                  active
+                  size="small"
+                  style={{ width: 200, maxWidth: "100%" }}
                 />
-              </div>
-            </Space>
+              </Space>
+            ) : (
+              <Space className="w-full sm:w-auto" wrap>
+                <div className="w-full sm:w-auto">
+                  <Input
+                    placeholder="Buscar variação"
+                    value={query}
+                    onChange={(event) => {
+                      const nextQuery = event.target.value;
+                      setQuery(nextQuery);
+                      handleFilterStateChange(nextQuery, tipoId);
+                    }}
+                    allowClear
+                    disabled={loading || saving}
+                    className="w-full sm:min-w-72"
+                  />
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Select
+                    placeholder="Filtrar tipo"
+                    value={tipoId}
+                    allowClear
+                    onChange={(value) => {
+                      const nextTipoId = value;
+                      setTipoId(nextTipoId);
+                      handleFilterStateChange(query, nextTipoId);
+                    }}
+                    showSearch
+                    onSearch={(value) => {
+                      setTiposQuery(value);
+                      setTiposOffset(0);
+                      setTiposHasMore(true);
+                    }}
+                    onPopupScroll={(event) => {
+                      const target = event.target as HTMLDivElement;
+                      if (
+                        target.scrollTop + target.offsetHeight >=
+                        target.scrollHeight - 16
+                      ) {
+                        void loadMoreTipos();
+                      }
+                    }}
+                    filterOption={false}
+                    loading={tiposLoading}
+                    disabled={loading || saving}
+                    popupRender={(menu) => (
+                      <>
+                        {menu}
+                        {tiposLoading ? (
+                          <div className="px-3 py-2 text-center text-xs text-neutral-500">
+                            <Spin size="small" />{" "}
+                            <span className="ml-2">Carregando mais...</span>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                    options={tipos.map((tipo) => ({
+                      label: tipo.nome,
+                      value: tipo.id,
+                    }))}
+                    className="w-full sm:min-w-[200px]"
+                  />
+                </div>
+              </Space>
+            )
           }
         >
           <VariacaoTable

@@ -96,7 +96,7 @@ export function TipoModal({
               }
             }}
             loading={unidadesLoading}
-            dropdownRender={(menu) => (
+            popupRender={(menu) => (
               <>
                 {menu}
                 {unidadesLoading ? (

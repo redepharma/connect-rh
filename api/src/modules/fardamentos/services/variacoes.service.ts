@@ -98,7 +98,9 @@ export class VariacoesService {
       qb.andWhere('tipo.id = :tipoId', { tipoId: query.tipoId });
     }
 
-    qb.orderBy('variacao.createdAt', 'DESC');
+    qb.orderBy('tipo.nome', 'ASC')
+      .addOrderBy('variacao.tamanho', 'ASC')
+      .addOrderBy('variacao.genero', 'ASC');
     const offset = Math.max(0, query?.offset ?? 0);
     const limit = Math.min(10, Math.max(1, query?.limit ?? 10));
     const [data, total] = await qb.skip(offset).take(limit).getManyAndCount();

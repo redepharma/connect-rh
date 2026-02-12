@@ -174,6 +174,16 @@ export const fetchEstoque = (filters?: {
     },
   });
 
+export const createEstoque = (data: {
+  variacaoId: string;
+  unidadeId: string;
+  total?: number;
+}) =>
+  apiClient<EstoqueResponse>('/fardamentos/estoque', {
+    method: 'POST',
+    body: data,
+  });
+
 export const mapTiposToUi = (tipos: TipoResponse[]): TipoFardamento[] =>
   tipos.map((tipo) => ({
     id: tipo.id,
