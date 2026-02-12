@@ -33,7 +33,7 @@ export function FardamentosShell({
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-7xl px-6 py-6">
         <header className="space-y-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

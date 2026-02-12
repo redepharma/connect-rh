@@ -6,15 +6,44 @@ import {
   SkinOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useAuth } from "@/context/auth-context";
+
+const items = [
+  { label: "Visão geral", href: "/fardamentos" },
+  { label: "Unidades", href: "/fardamentos/unidades" },
+  { label: "Tipos", href: "/fardamentos/tipos" },
+  { label: "Variações", href: "/fardamentos/variacoes" },
+  { label: "Estoque", href: "/fardamentos/estoque" },
+  { label: "Movimentações", href: "/fardamentos/movimentacoes" },
+  { label: "Historico", href: "/fardamentos/historico" },
+  { label: "Avarias", href: "/fardamentos/avarias" },
+  { label: "Saldos", href: "/fardamentos/saldos" },
+];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const { pathname } = useRouter();
+  const { user } = useAuth();
   type MenuItem = Required<MenuProps>["items"][number];
+
+  const routeKeyMap: Record<string, string> = {
+    "/fardamentos": "visaoGeral",
+    "/fardamentos/unidades": "unidades",
+    "/fardamentos/tipos": "tipos",
+    "/fardamentos/variacoes": "variacoes",
+    "/fardamentos/estoque": "estoque",
+    "/fardamentos/movimentacoes": "movimentacoes",
+    "/fardamentos/historico": "historico",
+    "/fardamentos/avarias": "avarias",
+    "/fardamentos/saldos": "saldos",
+  };
+
+  const selectedKey = routeKeyMap[pathname] || "visaoGeral";
 
   const items: MenuItem[] = [
     {
       label: "Fardamentos",
-      key: "sub1",
+      key: "fardamentos",
       icon: <SkinOutlined />,
       children: [
         {
@@ -61,39 +90,72 @@ export function Sidebar() {
               ),
               key: "estoque",
             },
+            {
+              label: (
+                <Link href="/fardamentos/movimentacoes" rel="">
+                  Movimentações
+                </Link>
+              ),
+              key: "movimentacoes",
+            },
+            {
+              label: (
+                <Link href="/fardamentos/historico" rel="">
+                  Histórico
+                </Link>
+              ),
+              key: "historico",
+            },
+            {
+              label: (
+                <Link href="/fardamentos/avarias" rel="">
+                  Avarias
+                </Link>
+              ),
+              key: "avarias",
+            },
+            {
+              label: (
+                <Link href="/fardamentos/saldos" rel="">
+                  Saldos
+                </Link>
+              ),
+              key: "saldos",
+            },
           ],
         },
       ],
     },
     {
       label: "Atualizar Colaborador",
-      key: "sub2",
+      key: "atualizarColaborador",
       icon: <AppstoreOutlined />,
     },
     {
       label: "Minha Conta",
-      key: "sub3",
+      key: "minhaConta",
       icon: <AppstoreOutlined />,
     },
     {
       label: "Ajuda",
-      key: "sub4",
+      key: "ajuda",
       icon: <CommentOutlined />,
     },
   ];
 
   return (
-    <aside className="bg-neutral-50 text-neutral-700 w-64 border-r border-stone-200 h-full shadow-sm p-4 flex flex-col justify-between">
+    <aside className=" text-neutral-700 w-64 border-r border-stone-200 h-full shadow-sm p-4 flex flex-col justify-between">
       <div>
         <img alt="Logo" className="w-44 mx-auto py-4" src="/logo.png" />
-        <Divider className="my-4 bg-stone-200" />
-        <h2 className="text-center font-bold"></h2>
-        <Divider className="my-4 bg-stone-200" />
+        <Divider className="my-4 " />
+        <h2 className="text-center font-bold">{user?.nome}</h2>
+        <p className="text-slate-600 text-center">{user?.departamento}</p>
+        <Divider className="my-4 " />
         <div className="space-y-2">
           <Menu
             mode="inline"
-            defaultOpenKeys={["sub1"]}
-            selectedKeys={[pathname.replace("/", "") || "visaoGeral"]}
+            defaultOpenKeys={["fardamentos"]}
+            selectedKeys={[selectedKey]}
             items={items}
           />
         </div>

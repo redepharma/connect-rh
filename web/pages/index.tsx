@@ -175,9 +175,6 @@ export default function Home() {
           ]}
         />
       )}
-      <Typography.Text className="text-xs text-neutral-500">
-        Connect RH
-      </Typography.Text>
     </div>
   );
 }

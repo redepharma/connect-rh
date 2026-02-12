@@ -1,23 +1,23 @@
 import { Sidebar } from "@/components/sidebar";
 import { Head } from "./head";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 interface DefaultLayoutProps {
   children: React.ReactNode;
-  currentNav?: "apps" | "gerenciar" | "downloads" | "ajuda";
 }
 
-export default function DefaultLayout({
-  children,
-  currentNav,
-}: DefaultLayoutProps) {
+export default function DefaultLayout({ children }: DefaultLayoutProps) {
   return (
-    <div className="flex h-screen bg-neutral-50">
+    <div className="flex h-screen ">
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-y-scroll overflow-x-hidden">
         <Head />
-        <main className="container mx-auto grow max-w-7xl px-6 py-6 pt-6 bg-neutral-50">
+        <main className="container mx-auto grow max-w-7xl px-6 py-6 pt-6">
           {children}
         </main>
+      </div>
+      <div className="fixed top-4 right-4">
+        <ThemeSwitcher />
       </div>
     </div>
   );
