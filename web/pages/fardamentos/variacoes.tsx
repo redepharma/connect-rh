@@ -81,37 +81,50 @@ export default function VariacoesPage() {
 
       setLoading(true);
       try {
-        const [variacoesResult, tiposResult] = await Promise.all([
-          fetchVariacoes({
-            q: effectiveQuery || undefined,
-            tipoId: effectiveTipoId,
-            offset: (effectivePage - 1) * pageSize,
-            limit: pageSize,
-          }),
-          fetchTipos({
-            q: debouncedTiposQuery || undefined,
-            offset: 0,
-            limit: 10,
-          }),
-        ]);
+        const variacoesResult = await fetchVariacoes({
+          q: effectiveQuery || undefined,
+          tipoId: effectiveTipoId,
+          offset: (effectivePage - 1) * pageSize,
+          limit: pageSize,
+        });
 
         setData(mapVariacoesToUi(variacoesResult.data));
         setTotal(variacoesResult.total);
-        setTipos(mapTiposToUi(tiposResult.data));
-        setTiposOffset(tiposResult.data.length);
-        setTiposHasMore(tiposResult.data.length < tiposResult.total);
       } catch (err) {
         toaster.erro("Erro ao carregar variações", err);
       } finally {
         setLoading(false);
       }
     },
-    [debouncedQuery, tipoId, page, debouncedTiposQuery],
+    [debouncedQuery, tipoId, page],
   );
 
   useEffect(() => {
     void loadVariacoes();
   }, [loadVariacoes]);
+
+  const loadFilterTipos = useCallback(async () => {
+    setTiposLoading(true);
+    try {
+      const tiposResult = await fetchTipos({
+        q: debouncedTiposQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      const mapped = mapTiposToUi(tiposResult.data);
+      setTipos(mapped);
+      setTiposOffset(mapped.length);
+      setTiposHasMore(mapped.length < tiposResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar tipos", err);
+    } finally {
+      setTiposLoading(false);
+    }
+  }, [debouncedTiposQuery]);
+
+  useEffect(() => {
+    void loadFilterTipos();
+  }, [loadFilterTipos]);
 
   const loadMoreTipos = async () => {
     if (tiposLoading || !tiposHasMore) return;

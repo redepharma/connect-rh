@@ -55,37 +55,49 @@ export default function TiposPage() {
 
       setLoading(true);
       try {
-        const [tiposResult, unidadesResult] = await Promise.all([
-          fetchTipos({
-            q: effectiveQuery || undefined,
-            unidadeId: effectiveUnidadeId,
-            offset: (effectivePage - 1) * pageSize,
-            limit: pageSize,
-          }),
-          fetchUnidades({
-            q: debouncedUnidadesQuery || undefined,
-            offset: 0,
-            limit: 10,
-          }),
-        ]);
+        const tiposResult = await fetchTipos({
+          q: effectiveQuery || undefined,
+          unidadeId: effectiveUnidadeId,
+          offset: (effectivePage - 1) * pageSize,
+          limit: pageSize,
+        });
 
         setData(mapTiposToUi(tiposResult.data));
         setTotal(tiposResult.total);
-        setUnidades(unidadesResult.data);
-        setUnidadesOffset(unidadesResult.data.length);
-        setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
       } catch (err) {
         toaster.erro("Erro ao carregar tipos", err);
       } finally {
         setLoading(false);
       }
     },
-    [debouncedQuery, unidadeId, page, debouncedUnidadesQuery],
+    [debouncedQuery, unidadeId, page],
   );
 
   useEffect(() => {
     void loadTipos();
   }, [loadTipos]);
+
+  const loadFilterUnidades = useCallback(async () => {
+    setUnidadesLoading(true);
+    try {
+      const unidadesResult = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      setUnidades(unidadesResult.data);
+      setUnidadesOffset(unidadesResult.data.length);
+      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  }, [debouncedUnidadesQuery]);
+
+  useEffect(() => {
+    void loadFilterUnidades();
+  }, [loadFilterUnidades]);
 
   const loadMoreUnidades = async () => {
     if (unidadesLoading || !unidadesHasMore) return;

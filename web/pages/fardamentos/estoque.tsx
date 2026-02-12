@@ -136,35 +136,17 @@ export default function EstoquePage() {
       setLoading(true);
       setError(null);
       try {
-        const [estoqueResult, unidadesResult, tiposResult] = await Promise.all([
-          fetchEstoque({
-            q: effectiveQuery || undefined,
-            unidadeId: effectiveUnidadeId,
-            tipoId: effectiveTipoId,
-            baixoEstoque,
-            offset: (effectivePage - 1) * pageSize,
-            limit: pageSize,
-          }),
-          fetchUnidades({
-            q: debouncedUnidadesQuery || undefined,
-            offset: 0,
-            limit: 10,
-          }),
-          fetchTipos({
-            q: debouncedTiposQuery || undefined,
-            offset: 0,
-            limit: 10,
-          }),
-        ]);
+        const estoqueResult = await fetchEstoque({
+          q: effectiveQuery || undefined,
+          unidadeId: effectiveUnidadeId,
+          tipoId: effectiveTipoId,
+          baixoEstoque,
+          offset: (effectivePage - 1) * pageSize,
+          limit: pageSize,
+        });
 
         setData(mapEstoqueToUi(estoqueResult.data));
         setTotal(estoqueResult.total);
-        setUnidades(unidadesResult.data);
-        setUnidadesOffset(unidadesResult.data.length);
-        setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
-        setTipos(mapTiposToUi(tiposResult.data));
-        setTiposOffset(tiposResult.data.length);
-        setTiposHasMore(tiposResult.data.length < tiposResult.total);
       } catch (err) {
         const message =
           err instanceof Error
@@ -182,14 +164,57 @@ export default function EstoquePage() {
       tipoId,
       page,
       baixoEstoque,
-      debouncedUnidadesQuery,
-      debouncedTiposQuery,
     ],
   );
 
   useEffect(() => {
     void loadEstoquePage();
   }, [loadEstoquePage]);
+
+  const loadFilterUnidades = useCallback(async () => {
+    setUnidadesLoading(true);
+    try {
+      const unidadesResult = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      setUnidades(unidadesResult.data);
+      setUnidadesOffset(unidadesResult.data.length);
+      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  }, [debouncedUnidadesQuery]);
+
+  const loadFilterTipos = useCallback(async () => {
+    setTiposLoading(true);
+    try {
+      const tiposResult = await fetchTipos({
+        q: debouncedTiposQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      const mapped = mapTiposToUi(tiposResult.data);
+      setTipos(mapped);
+      setTiposOffset(mapped.length);
+      setTiposHasMore(mapped.length < tiposResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar tipos", err);
+    } finally {
+      setTiposLoading(false);
+    }
+  }, [debouncedTiposQuery]);
+
+  useEffect(() => {
+    void loadFilterUnidades();
+  }, [loadFilterUnidades]);
+
+  useEffect(() => {
+    void loadFilterTipos();
+  }, [loadFilterTipos]);
 
   const loadMoreUnidades = async () => {
     if (unidadesLoading || !unidadesHasMore) return;
@@ -446,7 +471,12 @@ export default function EstoquePage() {
           "Item adicionado",
           "O item foi adicionado ao estoque. Você pode adicionar outro.",
         );
-        form.setFieldsValue({ total: undefined });
+        form.setFieldsValue({
+          unidadeId: values.unidadeId,
+          tipoId: values.tipoId,
+          variacaoId: undefined,
+          total: undefined,
+        });
       } else {
         toaster.sucesso("Item adicionado", "O item foi adicionado ao estoque.");
         setOpenAddModal(false);
