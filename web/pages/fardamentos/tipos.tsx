@@ -165,6 +165,25 @@ export default function TiposPage() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
+      if (editing) {
+        const normalizeText = (value: unknown) => String(value ?? "").trim();
+        const sameIdSet = (a: string[], b: string[]) => {
+          if (a.length !== b.length) return false;
+          const aSorted = [...a].sort();
+          const bSorted = [...b].sort();
+          return aSorted.every((value, index) => value === bSorted[index]);
+        };
+
+        const isUnchanged =
+          normalizeText(values.nome) === normalizeText(editing.nome) &&
+          sameIdSet(values.unidadesIds ?? [], editing.unidadesIds ?? []);
+
+        if (isUnchanged) {
+          setOpen(false);
+          setEditing(null);
+          return;
+        }
+      }
       setSaving(true);
       if (editing) {
         await updateTipo(editing.id, values);

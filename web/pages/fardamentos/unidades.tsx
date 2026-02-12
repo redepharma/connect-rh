@@ -129,6 +129,19 @@ export default function UnidadesPage() {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
+      if (editing) {
+        const normalizeText = (value: unknown) => String(value ?? "").trim();
+        const isUnchanged =
+          normalizeText(values.nome) === normalizeText(editing.nome) &&
+          normalizeText(values.descricao) === normalizeText(editing.descricao) &&
+          Boolean(values.ativo) === Boolean(editing.ativo);
+
+        if (isUnchanged) {
+          setOpen(false);
+          setEditing(null);
+          return;
+        }
+      }
       setSaving(true);
       if (editing) {
         await updateUnidade(editing.id, values);

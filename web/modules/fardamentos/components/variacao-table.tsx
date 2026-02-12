@@ -1,12 +1,14 @@
 "use client";
 
-import { Button, Popconfirm, Space, Table } from "antd";
+import { Button, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Variacao } from "../types/fardamentos.types";
+import { Genero } from "../types/genero.enums";
 
 type VariacaoTableProps = {
   data: Variacao[];
   loading?: boolean;
+  actionsDisabled?: boolean;
   pagination?: {
     current: number;
     pageSize: number;
@@ -20,10 +22,17 @@ type VariacaoTableProps = {
 export function VariacaoTable({
   data,
   loading,
+  actionsDisabled = false,
   pagination,
   onEdit,
   onDelete,
 }: VariacaoTableProps) {
+  const getGeneroColor = (genero: Variacao["genero"]) => {
+    if (genero === Genero.MASCULINO) return "blue";
+    if (genero === Genero.FEMININO) return "magenta";
+    return "purple";
+  };
+
   const columns: ColumnsType<Variacao> = [
     {
       title: "Tipo",
@@ -37,38 +46,39 @@ export function VariacaoTable({
       title: "Tamanho",
       dataIndex: "tamanho",
       key: "tamanho",
+      render: (value: string) => <Tag>{value}</Tag>,
     },
     {
-      title: "Genero",
+      title: "Gênero",
       dataIndex: "genero",
       key: "genero",
-    },
-    {
-      title: "Identificador",
-      dataIndex: "id",
-      key: "id",
-      render: (value: string) => (
-        <span className="text-xs text-neutral-500">{value}</span>
+      render: (value: Variacao["genero"]) => (
+        <Tag color={getGeneroColor(value)}>{value}</Tag>
       ),
     },
     {
-      title: "Acoes",
+      title: "Ações",
       key: "acoes",
       render: (_: unknown, record: Variacao) => (
         <Space>
           {onEdit ? (
-            <Button size="small" onClick={() => onEdit(record)}>
+            <Button
+              size="small"
+              onClick={() => onEdit(record)}
+              disabled={actionsDisabled}
+            >
               Editar
             </Button>
           ) : null}
           {onDelete ? (
             <Popconfirm
-              title="Remover variacao?"
+              title="Remover variação?"
               okText="Sim"
-              cancelText="Nao"
+              cancelText="Não"
               onConfirm={() => onDelete(record)}
+              disabled={actionsDisabled}
             >
-              <Button size="small" danger>
+              <Button size="small" danger disabled={actionsDisabled}>
                 Remover
               </Button>
             </Popconfirm>
@@ -84,6 +94,7 @@ export function VariacaoTable({
       columns={columns}
       dataSource={data}
       loading={loading}
+      scroll={{ x: "max-content" }}
       pagination={
         pagination
           ? {

@@ -1,10 +1,13 @@
-import { Button, Form, Input, Select, Space } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Form, Input, Select, Space, Spin } from "antd";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { VariacaoTable } from "@/modules/fardamentos/components/variacao-table";
 import { VariacaoModal } from "@/modules/fardamentos/components/variacao-modal";
-import type { TipoFardamento, Variacao } from "@/modules/fardamentos/types/fardamentos.types";
+import type {
+  TipoFardamento,
+  Variacao,
+} from "@/modules/fardamentos/types/fardamentos.types";
 import {
   createVariacao,
   deleteVariacao,
@@ -35,20 +38,53 @@ export default function VariacoesPage() {
   const [tiposLoading, setTiposLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Variacao | null>(null);
+  const [saveAndCreateAnother, setSaveAndCreateAnother] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm();
+  const pageBeforeFilterRef = useRef<number>(1);
+  const normalizeText = (value: unknown) => String(value ?? "").trim();
+  const parseTamanhos = (value: unknown) =>
+    normalizeText(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
 
-  useEffect(() => {
-    let active = true;
+  const handleFilterStateChange = (
+    nextQuery: string,
+    nextTipoId: string | undefined,
+  ) => {
+    const currentFiltered = Boolean(query.trim() || tipoId);
+    const nextFiltered = Boolean(nextQuery.trim() || nextTipoId);
 
-    const load = async () => {
+    if (!currentFiltered && nextFiltered) {
+      pageBeforeFilterRef.current = page;
+      setPage(1);
+      return;
+    }
+
+    if (currentFiltered && !nextFiltered) {
+      setPage(pageBeforeFilterRef.current);
+      return;
+    }
+
+    if (nextFiltered) {
+      setPage(1);
+    }
+  };
+
+  const loadVariacoes = useCallback(
+    async (params?: { query?: string; tipoId?: string; currentPage?: number }) => {
+      const effectiveQuery = params?.query ?? debouncedQuery;
+      const effectiveTipoId = params?.tipoId ?? tipoId;
+      const effectivePage = params?.currentPage ?? page;
+
       setLoading(true);
       try {
         const [variacoesResult, tiposResult] = await Promise.all([
           fetchVariacoes({
-            q: debouncedQuery || undefined,
-            tipoId,
-            offset: (page - 1) * pageSize,
+            q: effectiveQuery || undefined,
+            tipoId: effectiveTipoId,
+            offset: (effectivePage - 1) * pageSize,
             limit: pageSize,
           }),
           fetchTipos({
@@ -57,26 +93,24 @@ export default function VariacoesPage() {
             limit: 10,
           }),
         ]);
-        if (active) {
-          setData(mapVariacoesToUi(variacoesResult.data));
-          setTotal(variacoesResult.total);
-          setTipos(mapTiposToUi(tiposResult.data));
-          setTiposOffset(tiposResult.data.length);
-          setTiposHasMore(tiposResult.data.length < tiposResult.total);
-        }
+
+        setData(mapVariacoesToUi(variacoesResult.data));
+        setTotal(variacoesResult.total);
+        setTipos(mapTiposToUi(tiposResult.data));
+        setTiposOffset(tiposResult.data.length);
+        setTiposHasMore(tiposResult.data.length < tiposResult.total);
       } catch (err) {
-        if (active) toaster.erro("Erro ao carregar variacoes", err);
+        toaster.erro("Erro ao carregar variações", err);
       } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
-    };
+    },
+    [debouncedQuery, tipoId, page, debouncedTiposQuery],
+  );
 
-    void load();
-
-    return () => {
-      active = false;
-    };
-  }, [debouncedQuery, tipoId, page, debouncedTiposQuery]);
+  useEffect(() => {
+    void loadVariacoes();
+  }, [loadVariacoes]);
 
   const loadMoreTipos = async () => {
     if (tiposLoading || !tiposHasMore) return;
@@ -100,15 +134,19 @@ export default function VariacoesPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setSaveAndCreateAnother(false);
     form.resetFields();
+    if (tipoId) {
+      form.setFieldsValue({ tipoId });
+    }
     setOpen(true);
   };
 
   const openEdit = (variacao: Variacao) => {
     setEditing(variacao);
-    const tipo = tipos.find((item) => item.nome === variacao.tipoNome);
+    setSaveAndCreateAnother(false);
     form.setFieldsValue({
-      tipoId: tipo?.id,
+      tipoId: variacao.tipoId,
       tamanho: variacao.tamanho,
       genero: variacao.genero,
     });
@@ -116,22 +154,73 @@ export default function VariacoesPage() {
   };
 
   const handleSave = async () => {
+    let createdCount = 0;
     try {
       const values = await form.validateFields();
+      if (editing) {
+        const isUnchanged =
+          normalizeText(values.tipoId) === normalizeText(editing.tipoId) &&
+          normalizeText(values.tamanho) === normalizeText(editing.tamanho) &&
+          normalizeText(values.genero) === normalizeText(editing.genero);
+
+        if (isUnchanged) {
+          setOpen(false);
+          setEditing(null);
+          return;
+        }
+      }
       setSaving(true);
       if (editing) {
         await updateVariacao(editing.id, values);
-        toaster.sucesso("Variacao atualizada", "Os dados foram salvos.");
+        toaster.sucesso("Variação atualizada", "Os dados foram salvos.");
       } else {
-        await createVariacao(values);
-        toaster.sucesso("Variacao criada", "A variacao foi cadastrada.");
+        const tamanhos = Array.from(new Set(parseTamanhos(values.tamanho)));
+
+        for (const tamanho of tamanhos) {
+          await createVariacao({
+            ...values,
+            tamanho,
+          });
+          createdCount += 1;
+        }
+
+        toaster.sucesso(
+          createdCount > 1 ? "Variações criadas" : "Variação criada",
+          createdCount > 1
+            ? `${createdCount} variações foram cadastradas.`
+            : "A variação foi cadastrada.",
+        );
       }
-      setOpen(false);
-      setEditing(null);
       setQuery("");
       setPage(1);
+      await loadVariacoes({ query: "", tipoId, currentPage: 1 });
+
+      if (editing || !saveAndCreateAnother) {
+        setOpen(false);
+        setEditing(null);
+      } else {
+        form.resetFields();
+        form.setFieldsValue({
+          tipoId: values.tipoId,
+          genero: values.genero,
+        });
+      }
     } catch (err) {
-      toaster.erro("Erro ao salvar variacao", err);
+      if (
+        err &&
+        typeof err === "object" &&
+        "errorFields" in err &&
+        Array.isArray((err as { errorFields?: unknown[] }).errorFields)
+      ) {
+        return;
+      }
+      if (!editing && createdCount > 0) {
+        toaster.alerta(
+          "Cadastro parcial",
+          `${createdCount} variação(ões) foram criadas antes do erro.`,
+        );
+      }
+      toaster.erro("Erro ao salvar variação", err);
     } finally {
       setSaving(false);
     }
@@ -143,9 +232,10 @@ export default function VariacoesPage() {
       await deleteVariacao(variacao.id);
       setQuery("");
       setPage(1);
-      toaster.sucesso("Variacao removida", "A variacao foi excluida.");
+      await loadVariacoes({ query: "", tipoId, currentPage: 1 });
+      toaster.sucesso("Variação removida", "A variação foi excluída.");
     } catch (err) {
-      toaster.erro("Erro ao remover variacao", err);
+      toaster.erro("Erro ao remover variação", err);
     } finally {
       setSaving(false);
     }
@@ -154,65 +244,91 @@ export default function VariacoesPage() {
   return (
     <DefaultLayout>
       <FardamentosShell
-        title="Variacoes"
-        description="Configure tamanhos e generos para cada tipo de fardamento."
+        title="Variações"
+        description="Configure tamanhos e gêneros para cada tipo de fardamento."
         actions={
-          <Button type="primary" onClick={openCreate}>
-            Nova variacao
+          <Button
+            type="primary"
+            onClick={openCreate}
+            disabled={loading || saving}
+            className="w-full sm:w-auto"
+          >
+            Nova variação
           </Button>
         }
       >
         <SectionCard
-          title="Variacoes cadastradas"
-          description="As variacoes definem o estoque controlado e disponibilidade."
+          title="Variações cadastradas"
+          description="As variações definem o estoque controlado e disponibilidade."
           actions={
-            <Space>
-              <Input
-                placeholder="Buscar variacao"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(1);
-                }}
-                allowClear
-              />
-              <Select
-                placeholder="Filtrar tipo"
-                value={tipoId}
-                allowClear
-                onChange={(value) => {
-                  setTipoId(value);
-                  setPage(1);
-                }}
-                showSearch
-                onSearch={(value) => {
-                  setTiposQuery(value);
-                  setTiposOffset(0);
-                  setTiposHasMore(true);
-                }}
-                onPopupScroll={(event) => {
-                  const target = event.target as HTMLDivElement;
-                  if (
-                    target.scrollTop + target.offsetHeight >=
-                    target.scrollHeight - 16
-                  ) {
-                    void loadMoreTipos();
-                  }
-                }}
-                filterOption={false}
-                loading={tiposLoading}
-                options={tipos.map((tipo) => ({
-                  label: tipo.nome,
-                  value: tipo.id,
-                }))}
-                style={{ minWidth: 200 }}
-              />
+            <Space className="w-full sm:w-auto" wrap>
+              <div className="w-full sm:w-auto">
+                <Input
+                  placeholder="Buscar variação"
+                  value={query}
+                  onChange={(event) => {
+                    const nextQuery = event.target.value;
+                    setQuery(nextQuery);
+                    handleFilterStateChange(nextQuery, tipoId);
+                  }}
+                  allowClear
+                  disabled={loading || saving}
+                  className="w-full sm:min-w-72"
+                />
+              </div>
+              <div className="w-full sm:w-auto">
+                <Select
+                  placeholder="Filtrar tipo"
+                  value={tipoId}
+                  allowClear
+                  onChange={(value) => {
+                    const nextTipoId = value;
+                    setTipoId(nextTipoId);
+                    handleFilterStateChange(query, nextTipoId);
+                  }}
+                  showSearch
+                  onSearch={(value) => {
+                    setTiposQuery(value);
+                    setTiposOffset(0);
+                    setTiposHasMore(true);
+                  }}
+                  onPopupScroll={(event) => {
+                    const target = event.target as HTMLDivElement;
+                    if (
+                      target.scrollTop + target.offsetHeight >=
+                      target.scrollHeight - 16
+                    ) {
+                      void loadMoreTipos();
+                    }
+                  }}
+                  filterOption={false}
+                  loading={tiposLoading}
+                  disabled={loading || saving}
+                  dropdownRender={(menu) => (
+                    <>
+                      {menu}
+                      {tiposLoading ? (
+                        <div className="px-3 py-2 text-center text-xs text-neutral-500">
+                          <Spin size="small" />{" "}
+                          <span className="ml-2">Carregando mais...</span>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  options={tipos.map((tipo) => ({
+                    label: tipo.nome,
+                    value: tipo.id,
+                  }))}
+                  className="w-full sm:min-w-[200px]"
+                />
+              </div>
             </Space>
           }
         >
           <VariacaoTable
             data={data}
-            loading={loading}
+            loading={loading || saving}
+            actionsDisabled={loading || saving}
             pagination={{
               current: page,
               pageSize,
@@ -229,6 +345,8 @@ export default function VariacoesPage() {
           form={form}
           saving={saving}
           tipos={tipos}
+          saveAndCreateAnother={saveAndCreateAnother}
+          onSaveAndCreateAnotherChange={setSaveAndCreateAnother}
           onCancel={() => setOpen(false)}
           onOk={handleSave}
         />

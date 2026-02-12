@@ -41,17 +41,6 @@ export function TipoModal({
     | string[]
     | undefined;
 
-  const sameIdSet = (a: string[], b: string[]) => {
-    if (a.length !== b.length) return false;
-    const aSorted = [...a].sort();
-    const bSorted = [...b].sort();
-    return aSorted.every((value, index) => value === bSorted[index]);
-  };
-
-  const isEditUnchanged = editing
-    ? String(watchedNome ?? "").trim() === String(editing.nome ?? "").trim() &&
-      sameIdSet(watchedUnidadesIds ?? [], editing.unidadesIds ?? [])
-    : false;
   const isRequiredFilled =
     String(watchedNome ?? "").trim().length > 0 &&
     (watchedUnidadesIds?.length ?? 0) > 0;
@@ -78,7 +67,7 @@ export function TipoModal({
       onOk={onOk}
       confirmLoading={saving}
       okButtonProps={{
-        disabled: !isRequiredFilled || Boolean(editing && isEditUnchanged),
+        disabled: !isRequiredFilled,
       }}
       title={editing ? "Editar tipo" : "Novo tipo"}
     >

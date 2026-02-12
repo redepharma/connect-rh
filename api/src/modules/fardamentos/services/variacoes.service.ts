@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -19,6 +20,34 @@ export class VariacoesService {
     private readonly tiposRepository: Repository<TipoEntity>,
   ) {}
 
+  private async ensureUniqueCombination(params: {
+    tipoId: string;
+    tamanho: string;
+    genero: string;
+    excludeId?: string;
+  }): Promise<void> {
+    const qb = this.variacoesRepository
+      .createQueryBuilder('variacao')
+      .where('variacao.tipo_id = :tipoId', { tipoId: params.tipoId })
+      .andWhere('LOWER(TRIM(variacao.tamanho)) = LOWER(TRIM(:tamanho))', {
+        tamanho: params.tamanho,
+      })
+      .andWhere('LOWER(TRIM(variacao.genero)) = LOWER(TRIM(:genero))', {
+        genero: params.genero,
+      });
+
+    if (params.excludeId) {
+      qb.andWhere('variacao.id <> :excludeId', { excludeId: params.excludeId });
+    }
+
+    const existing = await qb.getOne();
+    if (existing) {
+      throw new ConflictException(
+        'Ja existe uma variacao com este tipo, tamanho e genero.',
+      );
+    }
+  }
+
   async create(dto: CreateVariacaoDto): Promise<VariacaoEntity> {
     const tipo = await this.tiposRepository.findOne({
       where: { id: dto.tipoId },
@@ -27,6 +56,12 @@ export class VariacoesService {
     if (!tipo) {
       throw new BadRequestException('Tipo invalido');
     }
+
+    await this.ensureUniqueCombination({
+      tipoId: tipo.id,
+      tamanho: dto.tamanho,
+      genero: dto.genero,
+    });
 
     const variacao = this.variacoesRepository.create({
       tipo,
@@ -85,6 +120,9 @@ export class VariacoesService {
 
   async update(id: string, dto: UpdateVariacaoDto): Promise<VariacaoEntity> {
     const variacao = await this.findOne(id);
+    let finalTipo = variacao.tipo;
+    let finalTamanho = variacao.tamanho;
+    let finalGenero = variacao.genero;
 
     if (dto.tipoId) {
       const tipo = await this.tiposRepository.findOne({
@@ -93,16 +131,27 @@ export class VariacoesService {
       if (!tipo) {
         throw new BadRequestException('Tipo invalido');
       }
-      variacao.tipo = tipo;
+      finalTipo = tipo;
     }
 
     if (dto.tamanho) {
-      variacao.tamanho = dto.tamanho;
+      finalTamanho = dto.tamanho;
     }
 
     if (dto.genero) {
-      variacao.genero = dto.genero;
+      finalGenero = dto.genero;
     }
+
+    await this.ensureUniqueCombination({
+      tipoId: finalTipo.id,
+      tamanho: finalTamanho,
+      genero: finalGenero,
+      excludeId: variacao.id,
+    });
+
+    variacao.tipo = finalTipo;
+    variacao.tamanho = finalTamanho;
+    variacao.genero = finalGenero;
 
     return this.variacoesRepository.save(variacao);
   }

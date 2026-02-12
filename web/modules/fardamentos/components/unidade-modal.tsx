@@ -26,16 +26,9 @@ export function UnidadeModal({
   onOk,
 }: UnidadeModalProps) {
   const watchedNome = Form.useWatch("nome", form);
-  const watchedDescricao = Form.useWatch("descricao", form);
-  const watchedAtivo = Form.useWatch("ativo", form);
 
   const normalizeText = (value: unknown) => String(value ?? "").trim();
   const isRequiredFilled = normalizeText(watchedNome).length > 0;
-  const isEditUnchanged = editing
-    ? normalizeText(watchedNome) === normalizeText(editing.nome) &&
-      normalizeText(watchedDescricao) === normalizeText(editing.descricao) &&
-      Boolean(watchedAtivo) === Boolean(editing.ativo)
-    : false;
 
   return (
     <Modal
@@ -44,7 +37,7 @@ export function UnidadeModal({
       onOk={onOk}
       confirmLoading={saving}
       okButtonProps={{
-        disabled: !isRequiredFilled || Boolean(editing && isEditUnchanged),
+        disabled: !isRequiredFilled,
       }}
       title={editing ? "Editar unidade" : "Nova unidade"}
     >
