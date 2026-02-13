@@ -3,13 +3,16 @@ import {
   DatePicker,
   Input,
   Modal,
+  Popover,
+  Skeleton,
   Select,
   Space,
+  Spin,
   Table,
   Tag,
   Typography,
 } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import type { Movimentacao } from "@/modules/fardamentos/types/movimentacoes.types";
@@ -22,16 +25,13 @@ import {
   baixarTermo,
   fetchMovimentacoes,
   fetchUnidades,
-  fetchVariacoes,
   gerarTermo,
   listarTermos,
   mapMovimentacoesToUi,
-  mapVariacoesToUi,
 } from "@/modules/fardamentos/services/fardamentos.service";
-import type {
-  Unidade,
-  Variacao,
-} from "@/modules/fardamentos/types/fardamentos.types";
+import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
+import { formatIsoDateTime } from "@/shared/formatters/date";
+import { b64toBlob } from "@/shared/utils/blob";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
 import DefaultLayout from "@/layouts/default";
@@ -67,59 +67,106 @@ export default function HistoricoMovimentacoesPage() {
   const [unidadesOffset, setUnidadesOffset] = useState(0);
   const [unidadesHasMore, setUnidadesHasMore] = useState(true);
   const [unidadesLoading, setUnidadesLoading] = useState(false);
-  const [_variacoes, setVariacoes] = useState<Variacao[]>([]);
   const [termosOpen, setTermosOpen] = useState(false);
   const [termosLoading, setTermosLoading] = useState(false);
   const [termos, setTermos] = useState<TermoInfo[]>([]);
   const [movSelecionada, setMovSelecionada] = useState<Movimentacao | null>(
     null,
   );
+  const showPageSkeleton = loading && data.length === 0;
+  const pageBeforeFilterRef = useRef<number>(1);
+
+  const isFiltered = (value: typeof filters) =>
+    Boolean(
+      (value.q ?? "").trim() ||
+      value.unidadeId ||
+      value.tipo ||
+      value.status ||
+      value.startDate ||
+      value.endDate,
+    );
+
+  const handleFiltersStateChange = (nextFilters: typeof filters) => {
+    const currentFiltered = isFiltered(filters);
+    const nextFiltered = isFiltered(nextFilters);
+
+    if (!currentFiltered && nextFiltered) {
+      pageBeforeFilterRef.current = page;
+      setPage(1);
+      return;
+    }
+
+    if (currentFiltered && !nextFiltered) {
+      setPage(pageBeforeFilterRef.current);
+      return;
+    }
+
+    if (nextFiltered) {
+      setPage(1);
+    }
+  };
+
+  const historicoParams = useMemo(
+    () => ({
+      q: debouncedFiltersQ || undefined,
+      unidadeId: filtroUnidadeId,
+      tipo: filtroTipo,
+      status: filtroStatus,
+      startDate: filtroStartDate,
+      endDate: filtroEndDate,
+      offset: (page - 1) * pageSize,
+      limit: pageSize,
+    }),
+    [
+      debouncedFiltersQ,
+      filtroUnidadeId,
+      filtroTipo,
+      filtroStatus,
+      filtroStartDate,
+      filtroEndDate,
+      page,
+      pageSize,
+    ],
+  );
+
+  const loadHistorico = useCallback(async () => {
+    setLoading(true);
+    try {
+      const movResult = await fetchMovimentacoes(historicoParams);
+      setData(mapMovimentacoesToUi(movResult.data));
+      setTotal(movResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar historico", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [historicoParams]);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const [movResult, unidadesResult, variacoesResult] = await Promise.all([
-          fetchMovimentacoes({
-            q: debouncedFiltersQ || undefined,
-            unidadeId: filtroUnidadeId,
-            tipo: filtroTipo,
-            status: filtroStatus,
-            startDate: filtroStartDate,
-            endDate: filtroEndDate,
-            offset: (page - 1) * pageSize,
-            limit: pageSize,
-          }),
-          fetchUnidades({
-            q: debouncedUnidadesQuery || undefined,
-            offset: 0,
-            limit: 10,
-          }),
-          fetchVariacoes({ offset: 0, limit: 10 }),
-        ]);
-        setData(mapMovimentacoesToUi(movResult.data));
-        setTotal(movResult.total);
-        setUnidades(unidadesResult.data);
-        setUnidadesOffset(unidadesResult.data.length);
-        setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
-        setVariacoes(mapVariacoesToUi(variacoesResult.data));
-      } catch (err) {
-        toaster.erro("Erro ao carregar historico", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, [
-    debouncedFiltersQ,
-    filtroUnidadeId,
-    filtroTipo,
-    filtroStatus,
-    filtroStartDate,
-    filtroEndDate,
-    page,
-    debouncedUnidadesQuery,
-  ]);
+    void loadHistorico();
+  }, [loadHistorico]);
+
+  const loadFiltroUnidades = useCallback(async () => {
+    setUnidadesLoading(true);
+    try {
+      const unidadesResult = await fetchUnidades({
+        q: debouncedUnidadesQuery || undefined,
+        offset: 0,
+        limit: 10,
+      });
+      setUnidades(unidadesResult.data);
+      setUnidadesOffset(unidadesResult.data.length);
+      setUnidadesHasMore(unidadesResult.data.length < unidadesResult.total);
+    } catch (err) {
+      toaster.erro("Erro ao carregar unidades", err);
+    } finally {
+      setUnidadesLoading(false);
+    }
+  }, [debouncedUnidadesQuery]);
+
+  useEffect(() => {
+    void loadFiltroUnidades();
+  }, [loadFiltroUnidades]);
 
   const loadMoreUnidades = async () => {
     if (unidadesLoading || !unidadesHasMore) return;
@@ -208,7 +255,11 @@ export default function HistoricoMovimentacoesPage() {
       title: "Tipo",
       dataIndex: "tipo",
       key: "tipo",
-      render: (value: string) => <Tag>{value}</Tag>,
+      render: (value: string) => (
+        <Tag color={value === MovimentacaoTipo.DEVOLUCAO ? "volcano" : "blue"}>
+          {value === MovimentacaoTipo.DEVOLUCAO ? "DEVOLUÇÃO" : value}
+        </Tag>
+      ),
     },
     {
       title: "Status",
@@ -237,6 +288,7 @@ export default function HistoricoMovimentacoesPage() {
       title: "Criado em",
       dataIndex: "createdAt",
       key: "createdAt",
+      render: (value: string) => formatIsoDateTime(value),
     },
     {
       title: "Itens",
@@ -246,7 +298,25 @@ export default function HistoricoMovimentacoesPage() {
           (total, item) => total + (item.quantidade ?? 0),
           0,
         );
-        return `${totalQuantidade} peça(s) - ${record.itens.length} item(s)`;
+        return (
+          <Popover
+            trigger="hover"
+            title="Detalhes dos itens"
+            content={
+              <div className="min-w-60 space-y-1">
+                {record.itens.map((item) => (
+                  <div key={item.id} className="text-xs text-neutral-700">
+                    {item.quantidade}x {item.tipoNome} - {item.variacaoLabel}
+                  </div>
+                ))}
+              </div>
+            }
+          >
+            <span className="cursor-help underline decoration-dotted">
+              {totalQuantidade} peça(s) - {record.itens.length} item(s)
+            </span>
+          </Popover>
+        );
       },
     },
     {
@@ -263,7 +333,7 @@ export default function HistoricoMovimentacoesPage() {
   const termoColumns = useMemo(
     () => [
       {
-        title: "Versao",
+        title: "Versão",
         dataIndex: "versao",
         key: "versao",
       },
@@ -271,6 +341,13 @@ export default function HistoricoMovimentacoesPage() {
         title: "Tipo",
         dataIndex: "tipo",
         key: "tipo",
+        render: (value: string) => (
+          <Tag
+            color={value === MovimentacaoTipo.DEVOLUCAO ? "volcano" : "blue"}
+          >
+            {value === MovimentacaoTipo.DEVOLUCAO ? "DEVOLUÇÃO" : value}
+          </Tag>
+        ),
       },
       {
         title: "Gerado por",
@@ -281,9 +358,10 @@ export default function HistoricoMovimentacoesPage() {
         title: "Criado em",
         dataIndex: "createdAt",
         key: "createdAt",
+        render: (value: string) => formatIsoDateTime(value),
       },
       {
-        title: "Acoes",
+        title: "Ações",
         key: "acoes",
         render: (_: unknown, record: TermoInfo) => (
           <Space>
@@ -303,123 +381,157 @@ export default function HistoricoMovimentacoesPage() {
   return (
     <DefaultLayout>
       <FardamentosShell
-        title="Historico"
-        description="Historico de movimentacoes e termos gerados."
-        actions={
-          <Space>
-            <Button
-              onClick={() => {
-                setFilters({ ...filters });
-                setPage(1);
-              }}
-            >
-              Atualizar
-            </Button>
-          </Space>
-        }
+        title="Histórico"
+        description="Histórico de movimentações e termos gerados."
       >
         <SectionCard
-          title="Filtros"
-          description="Refine por colaborador, unidade, status e periodo."
+          title="Resumo do histórico"
+          description="Filtre por colaborador, unidade, status e período."
           actions={
-            <Space>
-              <Input
-                placeholder="Buscar colaborador"
-                value={filters.q}
-                onChange={(e) => {
-                  setFilters({ ...filters, q: e.target.value });
-                  setPage(1);
-                }}
-                allowClear
-              />
-              <Select
-                placeholder="Unidade"
-                allowClear
-                value={filters.unidadeId}
-                onChange={(value) => {
-                  setFilters({ ...filters, unidadeId: value });
-                  setPage(1);
-                }}
-                showSearch
-                onSearch={(value) => {
-                  setUnidadesQuery(value);
-                  setUnidadesOffset(0);
-                  setUnidadesHasMore(true);
-                }}
-                onPopupScroll={(event) => {
-                  const target = event.target as HTMLDivElement;
-                  if (
-                    target.scrollTop + target.offsetHeight >=
-                    target.scrollHeight - 16
-                  ) {
-                    void loadMoreUnidades();
-                  }
-                }}
-                filterOption={false}
-                loading={unidadesLoading}
-                options={unidades.map((u) => ({ label: u.nome, value: u.id }))}
-                style={{ minWidth: 180 }}
-              />
-              <Select
-                placeholder="Tipo"
-                allowClear
-                value={filters.tipo}
-                onChange={(value) => {
-                  setFilters({ ...filters, tipo: value });
-                  setPage(1);
-                }}
-                options={[
-                  { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
-                  { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
-                ]}
-                style={{ minWidth: 160 }}
-              />
-              <Select
-                placeholder="Status"
-                allowClear
-                value={filters.status}
-                onChange={(value) => {
-                  setFilters({ ...filters, status: value });
-                  setPage(1);
-                }}
-                options={[
-                  { label: "Separado", value: MovimentacaoStatus.SEPARADO },
-                  {
-                    label: "Em transito",
-                    value: MovimentacaoStatus.EM_TRANSITO,
-                  },
-                  { label: "Concluido", value: MovimentacaoStatus.CONCLUIDO },
-                  { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
-                ]}
-                style={{ minWidth: 160 }}
-              />
-              <RangePicker
-                onChange={(dates) => {
-                  setFilters({
-                    ...filters,
-                    startDate: dates?.[0]?.toISOString(),
-                    endDate: dates?.[1]?.toISOString(),
-                  });
-                  setPage(1);
-                }}
-              />
-            </Space>
+            showPageSkeleton ? (
+              <Space wrap className="w-full max-w-3xl">
+                <Skeleton.Input active className="w-full md:min-w-70" />
+                <Skeleton.Input active className="w-full md:min-w-45" />
+                <Skeleton.Input active className="w-full md:min-w-40" />
+                <Skeleton.Input active className="w-full md:min-w-40" />
+                <Skeleton.Input active className="w-full md:min-w-50" />
+              </Space>
+            ) : (
+              <Space wrap className="w-full max-w-3xl">
+                <Input
+                  placeholder="Buscar colaborador"
+                  value={filters.q}
+                  onChange={(e) => {
+                    const nextFilters = { ...filters, q: e.target.value };
+                    setFilters(nextFilters);
+                    handleFiltersStateChange(nextFilters);
+                  }}
+                  allowClear
+                  className="w-full md:min-w-72"
+                />
+                <Select
+                  placeholder="Unidade"
+                  allowClear
+                  value={filters.unidadeId}
+                  onChange={(value) => {
+                    const nextFilters = { ...filters, unidadeId: value };
+                    setFilters(nextFilters);
+                    handleFiltersStateChange(nextFilters);
+                  }}
+                  showSearch
+                  onSearch={(value) => {
+                    setUnidadesQuery(value);
+                    setUnidadesOffset(0);
+                    setUnidadesHasMore(true);
+                  }}
+                  onPopupScroll={(event) => {
+                    const target = event.target as HTMLDivElement;
+                    if (
+                      target.scrollTop + target.offsetHeight >=
+                      target.scrollHeight - 16
+                    ) {
+                      void loadMoreUnidades();
+                    }
+                  }}
+                  filterOption={false}
+                  loading={unidadesLoading}
+                  popupRender={(menu) => (
+                    <>
+                      {menu}
+                      {unidadesLoading ? (
+                        <div className="px-3 py-2 text-center">
+                          <Spin size="small" />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  options={unidades.map((u) => ({
+                    label: u.nome,
+                    value: u.id,
+                  }))}
+                  className="w-full md:min-w-45"
+                />
+                <Select
+                  placeholder="Tipo"
+                  allowClear
+                  value={filters.tipo}
+                  onChange={(value) => {
+                    const nextFilters = { ...filters, tipo: value };
+                    setFilters(nextFilters);
+                    handleFiltersStateChange(nextFilters);
+                  }}
+                  options={[
+                    { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
+                    { label: "Devolução", value: MovimentacaoTipo.DEVOLUCAO },
+                  ]}
+                  className="w-full md:min-w-40"
+                />
+                <Select
+                  placeholder="Status"
+                  allowClear
+                  value={filters.status}
+                  onChange={(value) => {
+                    const nextFilters = { ...filters, status: value };
+                    setFilters(nextFilters);
+                    handleFiltersStateChange(nextFilters);
+                  }}
+                  options={[
+                    { label: "Separado", value: MovimentacaoStatus.SEPARADO },
+                    {
+                      label: "Em trânsito",
+                      value: MovimentacaoStatus.EM_TRANSITO,
+                    },
+                    { label: "Concluído", value: MovimentacaoStatus.CONCLUIDO },
+                    { label: "Cancelado", value: MovimentacaoStatus.CANCELADO },
+                  ]}
+                  className="w-full md:min-w-40"
+                />
+                <RangePicker
+                  format="DD/MM/YYYY"
+                  placeholder={["Data inicial", "Data final"]}
+                  onChange={(dates) => {
+                    const nextFilters = {
+                      ...filters,
+                      startDate: dates?.[0]?.toISOString(),
+                      endDate: dates?.[1]?.toISOString(),
+                    };
+                    setFilters(nextFilters);
+                    handleFiltersStateChange(nextFilters);
+                  }}
+                  className="w-full md:min-w-50"
+                />
+              </Space>
+            )
           }
         >
-          <Table
-            rowKey="id"
-            columns={columns}
-            dataSource={data}
-            loading={loading}
-            pagination={{
-              current: page,
-              pageSize,
-              total,
-              onChange: (nextPage) => setPage(nextPage),
-              showSizeChanger: false,
-              showTotal: (value) => `Total: ${value}`,
-            }}
-          />
+          {showPageSkeleton ? (
+            <div className="space-y-3 rounded-lg border border-neutral-200/70 p-4">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Skeleton
+                  key={`historico-skeleton-${index}`}
+                  active
+                  title={false}
+                  paragraph={{ rows: 1, width: ["100%"] }}
+                />
+              ))}
+            </div>
+          ) : (
+            <Table
+              rowKey="id"
+              columns={columns}
+              dataSource={data}
+              loading={loading}
+              scroll={{ x: 980 }}
+              pagination={{
+                current: page,
+                pageSize,
+                total,
+                onChange: (nextPage) => setPage(nextPage),
+                showSizeChanger: false,
+                showTotal: (value) => `Total: ${value}`,
+              }}
+            />
+          )}
         </SectionCard>
 
         <Modal
@@ -429,11 +541,11 @@ export default function HistoricoMovimentacoesPage() {
             setMovSelecionada(null);
             setTermos([]);
           }}
-          title="Termos da movimentacao"
-          width={760}
-          styles={{ body: { maxHeight: "60vh", overflowY: "auto" } }}
+          title="Termos da movimentação"
+          width="44vw"
+          styles={{ body: { maxHeight: "70vh", overflowY: "auto" } }}
           footer={
-            <Space>
+            <Space wrap>
               <Button
                 onClick={() => {
                   setTermosOpen(false);
@@ -452,14 +564,18 @@ export default function HistoricoMovimentacoesPage() {
                 }}
                 disabled={!termos.length}
               >
-                Abrir ultimo termo
+                Abrir último termo
               </Button>
               <Button
                 type="primary"
                 loading={termosLoading}
                 onClick={handleGerarTermo}
+                disabled={
+                  movSelecionada?.status === MovimentacaoStatus.CONCLUIDO ||
+                  movSelecionada?.status === MovimentacaoStatus.CANCELADO
+                }
               >
-                Gerar termo
+                Gerar novo termo
               </Button>
             </Space>
           }
@@ -467,35 +583,32 @@ export default function HistoricoMovimentacoesPage() {
           <Typography.Text type="secondary">
             {movSelecionada
               ? `${movSelecionada.colaboradorNome} - ${movSelecionada.unidadeNome}`
-              : "Selecione uma movimentacao para ver os termos."}
+              : "Selecione uma movimentação para ver os termos."}
           </Typography.Text>
-          <Table
-            className="mt-4"
-            rowKey="id"
-            columns={termoColumns}
-            dataSource={termos}
-            loading={termosLoading}
-            scroll={{ y: 300 }}
-            pagination={false}
-          />
+          {termosLoading && termos.length === 0 ? (
+            <div className="mt-4 space-y-3 rounded-lg border border-neutral-200/70 p-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton
+                  key={`termos-skeleton-${index}`}
+                  active
+                  title={false}
+                  paragraph={{ rows: 1, width: ["100%"] }}
+                />
+              ))}
+            </div>
+          ) : (
+            <Table
+              className="mt-4"
+              rowKey="id"
+              columns={termoColumns}
+              dataSource={termos}
+              loading={termosLoading}
+              scroll={{ x: 760, y: 300 }}
+              pagination={false}
+            />
+          )}
         </Modal>
       </FardamentosShell>
     </DefaultLayout>
   );
-}
-
-function b64toBlob(b64Data: string, contentType: string) {
-  const byteCharacters = atob(b64Data);
-  const byteArrays = [];
-
-  for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-    const slice = byteCharacters.slice(offset, offset + 512);
-    const byteNumbers = new Array(slice.length);
-    for (let i = 0; i < slice.length; i++) {
-      byteNumbers[i] = slice.charCodeAt(i);
-    }
-    byteArrays.push(new Uint8Array(byteNumbers));
-  }
-
-  return new Blob(byteArrays, { type: contentType });
 }
