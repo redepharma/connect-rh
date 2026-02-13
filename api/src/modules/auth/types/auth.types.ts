@@ -16,6 +16,8 @@ export interface JwtPayload {
   papelConnect?: string;
   departamentoId?: string | null;
   departamento?: string | null;
+  departamentoNome?: string | null;
+  departamento_nome?: string | null;
   systemRoles?: SystemRolesPayload;
   papel_connect_rh?: string;
   papelConnectRh?: string;

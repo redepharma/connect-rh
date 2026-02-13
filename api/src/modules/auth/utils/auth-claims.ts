@@ -44,7 +44,24 @@ export const resolvePapelConnectRh = (payload: JwtPayload): PapelConnectRH => {
 };
 
 export const resolveDepartamento = (payload: JwtPayload): string | null => {
-  const dept = payload.departamento ?? null;
-  if (!dept) return null;
-  return String(dept).trim();
+  const explicitDepartamento =
+    payload.departamento ?? payload.departamentoNome ?? payload.departamento_nome;
+
+  if (explicitDepartamento) {
+    const normalized = String(explicitDepartamento).trim();
+    if (normalized.length > 0) {
+      return normalized;
+    }
+  }
+
+  const departamentoId = payload.departamentoId ?? null;
+  if (!departamentoId) return null;
+
+  const knownDepartamentoNames: Record<string, string> = {
+    dep_ti: 'TI',
+    dep_rh: 'RH',
+    dep_departamento_pessoal: 'Departamento Pessoal',
+  };
+
+  return knownDepartamentoNames[departamentoId] ?? departamentoId;
 };
