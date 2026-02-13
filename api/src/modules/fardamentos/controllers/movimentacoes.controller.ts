@@ -44,6 +44,19 @@ export class MovimentacoesController {
     return this.service.listarSaldoColaborador(colaboradorId);
   }
 
+  @Get('colaboradores/:colaboradorId/saldos/paginado')
+  @CheckPolicies((ability: AppAbility) => ability.can('read', 'Movimentacao'))
+  listarSaldoColaboradorPaginado(
+    @Param('colaboradorId') colaboradorId: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.service.listarSaldoColaboradorPaginado(colaboradorId, {
+      offset: Number(offset ?? 0),
+      limit: Number(limit ?? 10),
+    });
+  }
+
   @Get(':id')
   @CheckPolicies((ability: AppAbility) => ability.can('read', 'Movimentacao'))
   findOne(@Param('id') id: string) {

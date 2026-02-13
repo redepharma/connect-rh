@@ -329,6 +329,18 @@ export const fetchColaboradorSaldos = (colaboradorId: string) =>
     },
   );
 
+export const fetchColaboradorSaldosPaginado = (
+  colaboradorId: string,
+  params?: { offset?: number; limit?: number },
+) =>
+  apiClient<PaginatedResponse<ColaboradorSaldo> & { totalQuantidade: number }>(
+    `/fardamentos/movimentacoes/colaboradores/${colaboradorId}/saldos/paginado`,
+    {
+      method: "GET",
+      query: params,
+    },
+  );
+
 export const fetchAvarias = (filters?: {
   q?: string;
   movimentacaoId?: string;

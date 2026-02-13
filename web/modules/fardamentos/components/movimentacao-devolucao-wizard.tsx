@@ -312,7 +312,7 @@ export function MovimentacaoDevolucaoWizard({
                           rules={[{ required: true }]}
                         >
                           <Select
-                            placeholder="Variacao"
+                            placeholder="Variação"
                             options={variacaoOptionsDevolucao}
                             onPopupScroll={(event) => {
                               if (!onVariacoesScroll) return;
@@ -390,7 +390,7 @@ export function MovimentacaoDevolucaoWizard({
                 dataSource={saldos}
                 columns={[
                   {
-                    title: "Variacao",
+                    title: "Variação",
                     dataIndex: "variacaoId",
                     key: "variacaoId",
                     render: (_: string, record: ColaboradorSaldo) =>

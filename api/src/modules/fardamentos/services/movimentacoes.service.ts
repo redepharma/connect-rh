@@ -160,6 +160,42 @@ export class MovimentacoesService {
     );
   }
 
+  async listarSaldoColaboradorPaginado(
+    colaboradorId: string,
+    query?: { offset?: number; limit?: number },
+  ): Promise<{
+    data: {
+      variacaoId: string;
+      tipoNome: string;
+      tamanho: string;
+      genero: string;
+      quantidade: number;
+    }[];
+    total: number;
+    totalQuantidade: number;
+    offset: number;
+    limit: number;
+  }> {
+    const all = await this.listarSaldoColaborador(colaboradorId);
+    const totalQuantidade = all.reduce(
+      (acc, item) => acc + (item.quantidade ?? 0),
+      0,
+    );
+    const offset = Math.max(0, Number.isFinite(query?.offset) ? query!.offset! : 0);
+    const limit = Math.min(
+      10,
+      Math.max(1, Number.isFinite(query?.limit) ? query!.limit! : 10),
+    );
+    const data = all.slice(offset, offset + limit);
+    return {
+      data,
+      total: all.length,
+      totalQuantidade,
+      offset,
+      limit,
+    };
+  }
+
   async createEntrega(dto: CreateEntregaDto, user: RequestUser) {
     return this.createMovimentacao('ENTREGA', dto, user);
   }

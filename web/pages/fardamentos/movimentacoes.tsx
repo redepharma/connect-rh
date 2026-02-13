@@ -13,6 +13,7 @@ import {
 } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import { MovimentacaoEntregaWizard } from "@/modules/fardamentos/components/movimentacao-entrega-wizard";
@@ -55,6 +56,7 @@ import DefaultLayout from "@/layouts/default";
 const { RangePicker } = DatePicker;
 
 export default function MovimentacoesPage() {
+  const router = useRouter();
   const [data, setData] = useState<Movimentacao[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloadVersion, setReloadVersion] = useState(0);
@@ -911,6 +913,39 @@ export default function MovimentacoesPage() {
     [],
   );
   const showPageSkeleton = loading && data.length === 0;
+
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const novaDevolucao = router.query.novaDevolucao;
+    if (novaDevolucao !== "1") return;
+
+    const colaboradorIdQuery = router.query.colaboradorId;
+    const colaboradorNomeQuery = router.query.colaboradorNome;
+    const colaboradorId =
+      typeof colaboradorIdQuery === "string" ? colaboradorIdQuery : "";
+    const colaboradorNome =
+      typeof colaboradorNomeQuery === "string" ? colaboradorNomeQuery : "";
+
+    setOpenDevolucao(true);
+    setStepDevolucao(0);
+
+    if (colaboradorId) {
+      formDevolucao.setFieldsValue({
+        colaboradorId,
+        colaboradorNome,
+      });
+      const stored = { id: colaboradorId, nome: colaboradorNome };
+      setDevolucaoColaborador(stored);
+      devolucaoColaboradorRef.current = stored;
+    }
+
+    void router.replace(
+      { pathname: router.pathname, query: {} },
+      undefined,
+      { shallow: true },
+    );
+  }, [formDevolucao, router]);
 
   return (
     <DefaultLayout>

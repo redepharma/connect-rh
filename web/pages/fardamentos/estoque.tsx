@@ -158,13 +158,7 @@ export default function EstoquePage() {
         setLoading(false);
       }
     },
-    [
-      debouncedQuery,
-      unidadeId,
-      tipoId,
-      page,
-      baixoEstoque,
-    ],
+    [debouncedQuery, unidadeId, tipoId, page, baixoEstoque],
   );
 
   useEffect(() => {
@@ -593,7 +587,7 @@ export default function EstoquePage() {
                       label: unit.nome,
                       value: unit.id,
                     }))}
-                    className="w-full sm:min-w-[150px]"
+                    className="w-full sm:min-w-37.5"
                   />
                 </div>
                 <div className="w-full sm:w-auto">
@@ -642,7 +636,7 @@ export default function EstoquePage() {
                       label: tipo.nome,
                       value: tipo.id,
                     }))}
-                    className="w-full sm:min-w-[150px]"
+                    className="w-full sm:min-w-37.5"
                   />
                 </div>
                 <div className="w-full sm:w-auto">
