@@ -106,6 +106,19 @@ export default function HistoricoMovimentacoesPage() {
     }
   };
 
+  const clearFilters = () => {
+    const nextFilters = {
+      q: "",
+      unidadeId: undefined,
+      tipo: undefined,
+      status: undefined,
+      startDate: undefined,
+      endDate: undefined,
+    };
+    setFilters(nextFilters);
+    handleFiltersStateChange(nextFilters);
+  };
+
   const historicoParams = useMemo(
     () => ({
       q: debouncedFiltersQ || undefined,
@@ -500,6 +513,7 @@ export default function HistoricoMovimentacoesPage() {
                   }}
                   className="w-full md:min-w-50"
                 />
+                <Button onClick={clearFilters}>Limpar filtros</Button>
               </Space>
             )
           }
