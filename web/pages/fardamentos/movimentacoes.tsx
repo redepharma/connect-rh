@@ -11,6 +11,7 @@ import {
   Table,
   Tag,
 } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
@@ -184,6 +185,19 @@ export default function MovimentacoesPage() {
     if (nextFiltered) {
       setPage(1);
     }
+  };
+
+  const clearFilters = () => {
+    const nextFilters = {
+      q: "",
+      unidadeId: undefined,
+      tipo: undefined,
+      status: undefined,
+      startDate: undefined,
+      endDate: undefined,
+    };
+    setFilters(nextFilters);
+    handleFiltersStateChange(nextFilters);
   };
 
   const movimentacoesParams = useMemo(
@@ -875,6 +889,27 @@ export default function MovimentacoesPage() {
       ),
     },
   ];
+
+  const rangePresets = useMemo<Array<{ label: string; value: [Dayjs, Dayjs] }>>(
+    () => [
+      {
+        label: "Últimos 7 dias",
+        value: [dayjs().subtract(6, "day").startOf("day"), dayjs().endOf("day")],
+      },
+      {
+        label: "Este mês",
+        value: [dayjs().startOf("month"), dayjs().endOf("month")],
+      },
+      {
+        label: "Mês passado",
+        value: [
+          dayjs().subtract(1, "month").startOf("month"),
+          dayjs().subtract(1, "month").endOf("month"),
+        ],
+      },
+    ],
+    [],
+  );
   const showPageSkeleton = loading && data.length === 0;
 
   return (
@@ -1013,6 +1048,7 @@ export default function MovimentacoesPage() {
                 <div className="w-full md:w-auto">
                   <RangePicker
                     format="DD/MM/YYYY"
+                    presets={rangePresets}
                     placeholder={["Data inicial", "Data final"]}
                     onChange={(dates) => {
                       const nextFilters = {
@@ -1025,6 +1061,11 @@ export default function MovimentacoesPage() {
                     }}
                     className="w-full! max-w-60! md:min-w-50!"
                   />
+                </div>
+                <div className="w-full md:w-auto">
+                  <Button onClick={clearFilters} className="w-full md:w-auto">
+                    Limpar filtros
+                  </Button>
                 </div>
               </Space>
             )

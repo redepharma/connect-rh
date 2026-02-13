@@ -1,6 +1,7 @@
 import {
   Button,
   DatePicker,
+  Form,
   Input,
   Modal,
   Popover,
@@ -12,8 +13,10 @@ import {
   Tag,
   Typography,
 } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FardamentosShell } from "@/modules/fardamentos/components/fardamentos-shell";
+import { HistoricoAvariaModal } from "@/modules/fardamentos/components/historico-avaria-modal";
 import { SectionCard } from "@/modules/fardamentos/components/section-card";
 import type { Movimentacao } from "@/modules/fardamentos/types/movimentacoes.types";
 import type { TermoInfo } from "@/modules/fardamentos/types/termos.types";
@@ -23,18 +26,26 @@ import {
 } from "@/modules/fardamentos/types/movimentacoes.enums";
 import {
   baixarTermo,
+  fetchAvarias,
   fetchMovimentacoes,
   fetchUnidades,
   gerarTermo,
   listarTermos,
   mapMovimentacoesToUi,
+  registrarAvarias,
 } from "@/modules/fardamentos/services/fardamentos.service";
 import type { Unidade } from "@/modules/fardamentos/types/fardamentos.types";
+import type {
+  Avaria,
+  CreateAvariaItem,
+} from "@/modules/fardamentos/types/avarias.types";
 import { formatIsoDateTime } from "@/shared/formatters/date";
 import { b64toBlob } from "@/shared/utils/blob";
 import { toaster } from "@/components/toaster";
 import { useDebounce } from "@/hooks/useDebounce";
 import DefaultLayout from "@/layouts/default";
+import { AppTooltip } from "@/components/tooltip";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 
 const { RangePicker } = DatePicker;
 
@@ -73,6 +84,14 @@ export default function HistoricoMovimentacoesPage() {
   const [movSelecionada, setMovSelecionada] = useState<Movimentacao | null>(
     null,
   );
+  const [avariaModalOpen, setAvariaModalOpen] = useState(false);
+  const [avariaSaving, setAvariaSaving] = useState(false);
+  const [avariasRegistradas, setAvariasRegistradas] = useState<Avaria[]>([]);
+  const [avariasRegistradasLoading, setAvariasRegistradasLoading] =
+    useState(false);
+  const [movAvariaSelecionada, setMovAvariaSelecionada] =
+    useState<Movimentacao | null>(null);
+  const [avariaForm] = Form.useForm();
   const showPageSkeleton = loading && data.length === 0;
   const pageBeforeFilterRef = useRef<number>(1);
 
@@ -258,6 +277,199 @@ export default function HistoricoMovimentacoesPage() {
     }
   };
 
+  const avariaOpcoes = useMemo(() => {
+    if (!movAvariaSelecionada) return [];
+
+    const itensAgrupados = movAvariaSelecionada.itens.reduce<
+      Record<
+        string,
+        {
+          tipoNome: string;
+          variacaoLabel: string;
+          quantidade: number;
+        }
+      >
+    >((acc, item) => {
+      const atual = acc[item.variacaoId];
+      if (!atual) {
+        acc[item.variacaoId] = {
+          tipoNome: item.tipoNome,
+          variacaoLabel: item.variacaoLabel,
+          quantidade: item.quantidade ?? 0,
+        };
+        return acc;
+      }
+
+      atual.quantidade += item.quantidade ?? 0;
+      return acc;
+    }, {});
+
+    return Object.entries(itensAgrupados).map(([variacaoId, item]) => ({
+      value: variacaoId,
+      label: `${item.tipoNome} - ${item.variacaoLabel} (qtd: ${item.quantidade})`,
+      quantidade: item.quantidade,
+    }));
+  }, [movAvariaSelecionada]);
+
+  const quantidadeMaximaPorVariacao = useMemo(
+    () =>
+      avariaOpcoes.reduce<Record<string, number>>((acc, option) => {
+        acc[option.value] = option.quantidade;
+        return acc;
+      }, {}),
+    [avariaOpcoes],
+  );
+
+  const quantidadeRestantePorVariacao = useMemo(() => {
+    if (!movAvariaSelecionada) return {};
+
+    const labelToVariacaoId = movAvariaSelecionada.itens.reduce<
+      Record<string, string>
+    >((acc, item) => {
+      const label = `${item.tipoNome} - ${item.variacaoLabel}`;
+      acc[label] = item.variacaoId;
+      return acc;
+    }, {});
+
+    const jaRegistradoPorVariacaoId = avariasRegistradas.reduce<
+      Record<string, number>
+    >((acc, avaria) => {
+      const label = `${avaria.tipoNome} - ${avaria.variacaoLabel}`;
+      const variacaoId = labelToVariacaoId[label];
+      if (!variacaoId) return acc;
+      acc[variacaoId] = (acc[variacaoId] ?? 0) + (avaria.quantidade ?? 0);
+      return acc;
+    }, {});
+
+    return Object.entries(quantidadeMaximaPorVariacao).reduce<
+      Record<string, number>
+    >((acc, [variacaoId, total]) => {
+      const jaRegistrado = jaRegistradoPorVariacaoId[variacaoId] ?? 0;
+      acc[variacaoId] = Math.max(total - jaRegistrado, 0);
+      return acc;
+    }, {});
+  }, [avariasRegistradas, movAvariaSelecionada, quantidadeMaximaPorVariacao]);
+
+  const loadAvariasRegistradas = useCallback(async (movimentacaoId: string) => {
+    setAvariasRegistradasLoading(true);
+    try {
+      const result = await fetchAvarias({
+        movimentacaoId,
+        offset: 0,
+        limit: 100,
+      });
+      setAvariasRegistradas(result.data);
+    } catch (err) {
+      toaster.erro("Erro ao carregar avarias registradas", err);
+      setAvariasRegistradas([]);
+    } finally {
+      setAvariasRegistradasLoading(false);
+    }
+  }, []);
+
+  const openAvariaModal = (mov: Movimentacao) => {
+    setMovAvariaSelecionada(mov);
+    setAvariaModalOpen(true);
+    void loadAvariasRegistradas(mov.id);
+    const itemUnico = mov.itens.length === 1 ? mov.itens[0] : null;
+    avariaForm.setFieldsValue({
+      itens: [
+        {
+          variacaoId: itemUnico?.variacaoId,
+          quantidade: 1,
+          descricao: "",
+        },
+      ],
+    });
+  };
+
+  const closeAvariaModal = () => {
+    setAvariaModalOpen(false);
+    setMovAvariaSelecionada(null);
+    setAvariasRegistradas([]);
+    avariaForm.resetFields();
+  };
+
+  const handleRegistrarAvaria = async () => {
+    if (!movAvariaSelecionada) return;
+
+    try {
+      const values = await avariaForm.validateFields();
+      const itens: CreateAvariaItem[] = (values.itens ?? []).filter(
+        (item: CreateAvariaItem | undefined) =>
+          item?.variacaoId && Number(item?.quantidade ?? 0) > 0,
+      );
+
+      if (itens.length === 0) {
+        toaster.alerta(
+          "Verifique os dados",
+          "Adicione ao menos um item de avaria válido.",
+        );
+        return;
+      }
+
+      const excedeuLimiteRestante = itens.some((item) => {
+        const limiteRestante =
+          quantidadeRestantePorVariacao[item.variacaoId] ?? 0;
+        return Number(item.quantidade ?? 0) > limiteRestante;
+      });
+
+      if (excedeuLimiteRestante) {
+        toaster.alerta(
+          "Quantidade inválida",
+          "A quantidade informada excede o limite restante de avarias para a variação.",
+        );
+        return;
+      }
+
+      const variacaoIdByLabel = movAvariaSelecionada.itens.reduce<
+        Record<string, string>
+      >((acc, item) => {
+        acc[`${item.tipoNome} - ${item.variacaoLabel}`] = item.variacaoId;
+        return acc;
+      }, {});
+
+      const normalizarDescricao = (value?: string | null) =>
+        String(value ?? "")
+          .trim()
+          .toLowerCase();
+
+      const jaRegistradas = new Set(
+        avariasRegistradas
+          .map((item) => {
+            const variacaoId =
+              (item as { variacaoId?: string }).variacaoId ??
+              variacaoIdByLabel[`${item.tipoNome} - ${item.variacaoLabel}`];
+            if (!variacaoId) return null;
+            return `${variacaoId}-${item.quantidade}-${normalizarDescricao(item.descricao)}`;
+          })
+          .filter((value): value is string => Boolean(value)),
+      );
+
+      const possuiDuplicada = itens.some((item) => {
+        const key = `${item.variacaoId}-${item.quantidade}-${normalizarDescricao(item.descricao)}`;
+        return jaRegistradas.has(key);
+      });
+
+      if (possuiDuplicada) {
+        toaster.alerta(
+          "Avaria já registrada",
+          "Esta avaria já existe para esta movimentação.",
+        );
+        return;
+      }
+
+      setAvariaSaving(true);
+      await registrarAvarias(movAvariaSelecionada.id, itens);
+      toaster.sucesso("Avaria registrada", "Registro salvo com sucesso.");
+      closeAvariaModal();
+    } catch (err) {
+      toaster.erro("Erro ao registrar avaria", err);
+    } finally {
+      setAvariaSaving(false);
+    }
+  };
+
   const columns = [
     {
       title: "Colaborador",
@@ -333,12 +545,31 @@ export default function HistoricoMovimentacoesPage() {
       },
     },
     {
-      title: "Termos",
-      key: "termos",
+      title: (
+        <div className="inline-flex items-center gap-1">
+          <span>Ações</span>
+          <AppTooltip title="Só é possível registrar avarias para movimentações de devolução que estejam concluídas.">
+            <QuestionCircleOutlined className="text-neutral-500!" />
+          </AppTooltip>
+        </div>
+      ),
+      key: "acoes",
       render: (_: unknown, record: Movimentacao) => (
-        <Button size="small" onClick={() => void openTermos(record)}>
-          Ver termos
-        </Button>
+        <Space wrap>
+          <Button size="small" onClick={() => void openTermos(record)}>
+            Ver termos
+          </Button>
+          <Button
+            size="small"
+            onClick={() => openAvariaModal(record)}
+            disabled={
+              record.tipo !== MovimentacaoTipo.DEVOLUCAO ||
+              record.status !== MovimentacaoStatus.CONCLUIDO
+            }
+          >
+            Avaria
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -386,6 +617,30 @@ export default function HistoricoMovimentacoesPage() {
             </Button>
           </Space>
         ),
+      },
+    ],
+    [],
+  );
+
+  const rangePresets = useMemo<Array<{ label: string; value: [Dayjs, Dayjs] }>>(
+    () => [
+      {
+        label: "Últimos 7 dias",
+        value: [
+          dayjs().subtract(6, "day").startOf("day"),
+          dayjs().endOf("day"),
+        ],
+      },
+      {
+        label: "Este mês",
+        value: [dayjs().startOf("month"), dayjs().endOf("month")],
+      },
+      {
+        label: "Mês passado",
+        value: [
+          dayjs().subtract(1, "month").startOf("month"),
+          dayjs().subtract(1, "month").endOf("month"),
+        ],
       },
     ],
     [],
@@ -501,6 +756,7 @@ export default function HistoricoMovimentacoesPage() {
                 />
                 <RangePicker
                   format="DD/MM/YYYY"
+                  presets={rangePresets}
                   placeholder={["Data inicial", "Data final"]}
                   onChange={(dates) => {
                     const nextFilters = {
@@ -511,7 +767,7 @@ export default function HistoricoMovimentacoesPage() {
                     setFilters(nextFilters);
                     handleFiltersStateChange(nextFilters);
                   }}
-                  className="w-full md:min-w-50"
+                  className="w-full max-w-60 md:min-w-50"
                 />
                 <Button onClick={clearFilters}>Limpar filtros</Button>
               </Space>
@@ -585,8 +841,9 @@ export default function HistoricoMovimentacoesPage() {
                 loading={termosLoading}
                 onClick={handleGerarTermo}
                 disabled={
-                  movSelecionada?.status === MovimentacaoStatus.CONCLUIDO ||
-                  movSelecionada?.status === MovimentacaoStatus.CANCELADO
+                  movSelecionada?.status === MovimentacaoStatus.CANCELADO ||
+                  (movSelecionada?.status === MovimentacaoStatus.CONCLUIDO &&
+                    termos.length >= 1)
                 }
               >
                 Gerar novo termo
@@ -622,6 +879,19 @@ export default function HistoricoMovimentacoesPage() {
             />
           )}
         </Modal>
+
+        <HistoricoAvariaModal
+          open={avariaModalOpen}
+          saving={avariaSaving}
+          movimentacao={movAvariaSelecionada}
+          form={avariaForm}
+          options={avariaOpcoes}
+          maxByVariacao={quantidadeRestantePorVariacao}
+          avariasRegistradas={avariasRegistradas}
+          avariasLoading={avariasRegistradasLoading}
+          onCancel={closeAvariaModal}
+          onSubmit={() => void handleRegistrarAvaria()}
+        />
       </FardamentosShell>
     </DefaultLayout>
   );

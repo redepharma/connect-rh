@@ -15,6 +15,7 @@ import {
 } from "@/modules/fardamentos/services/fardamentos.service";
 import { toaster } from "@/components/toaster";
 import type { Avaria } from "@/modules/fardamentos/types/avarias.types";
+import { formatIsoDateTime } from "@/shared/formatters/date";
 
 export default function FardamentosOverview() {
   const [estoque, setEstoque] = useState<EstoqueItem[]>([]);
@@ -208,7 +209,7 @@ export default function FardamentosOverview() {
 
         <SectionCard
           title="Avarias recentes"
-          description="Últimos registros de avarias e ajustes realizados."
+          description="Últimos registros de avarias."
           actions={
             <Link href="/fardamentos/avarias">
               <Button type="primary">Ver avarias</Button>
@@ -217,7 +218,7 @@ export default function FardamentosOverview() {
         >
           <div className="flex flex-wrap gap-3">
             <Card className="border border-neutral-200/70" size="small">
-              <Typography.Text className="block text-xs text-neutral-500">
+              <Typography.Text className="block text-xs! text-neutral-500! uppercase">
                 Total de avarias
               </Typography.Text>
               {loading ? (
@@ -253,22 +254,39 @@ export default function FardamentosOverview() {
                 >
                   <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
                     <div>
-                      <Typography.Text className="block text-sm font-medium text-neutral-900">
+                      <Typography.Text className="block text-sm font-bold text-neutral-900">
                         {avaria.colaboradorNome}
                       </Typography.Text>
-                      <Typography.Text className="block text-xs text-neutral-500">
-                        {avaria.tipoNome} - {avaria.variacaoLabel}
-                      </Typography.Text>
-                      <Typography.Text className="block text-xs text-neutral-500">
-                        Unidade: {avaria.unidadeNome}
-                      </Typography.Text>
+                      <div className="flex items-center">
+                        <Typography.Text className="block text-xs! text-neutral-500!">
+                          {avaria.tipoNome} - {avaria.variacaoLabel}
+                        </Typography.Text>
+                        <Divider
+                          vertical={true}
+                          plain={true}
+                          className="mx-2"
+                        />
+                        <Typography.Text className="block text-xs! text-neutral-500!">
+                          Unidade: {avaria.unidadeNome}
+                        </Typography.Text>
+                        <Divider
+                          vertical={true}
+                          plain={true}
+                          className="mx-2"
+                        />
+                        <Typography.Text className="block text-xs! text-neutral-500!">
+                          {avaria.descricao?.trim()
+                            ? `Descrição: ${avaria.descricao}`
+                            : "Sem descrição"}
+                        </Typography.Text>
+                      </div>
                     </div>
                     <div className="text-left sm:text-right">
                       <Typography.Text className="block text-sm font-semibold text-neutral-900">
-                        {avaria.quantidade} itens
+                        {avaria.quantidade} item(s)
                       </Typography.Text>
                       <Typography.Text className="block text-xs text-neutral-500">
-                        {avaria.createdAt}
+                        {formatIsoDateTime(avaria.createdAt)}
                       </Typography.Text>
                     </div>
                   </div>
