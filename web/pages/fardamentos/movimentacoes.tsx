@@ -853,42 +853,49 @@ export default function MovimentacoesPage() {
     {
       title: "Ações",
       key: "acoes",
-      render: (_: unknown, record: Movimentacao) => (
-        <Space wrap>
-          <Popconfirm
-            title="Marcar como Em transito?"
-            onConfirm={() =>
-              void handleStatus(record.id, MovimentacaoStatus.EM_TRANSITO)
-            }
-            okText="Sim"
-            cancelText="Nao"
-          >
-            <Button size="small">Em transito</Button>
-          </Popconfirm>
-          <Popconfirm
-            title="Concluir movimentação?"
-            onConfirm={() =>
-              void handleStatus(record.id, MovimentacaoStatus.CONCLUIDO)
-            }
-            okText="Sim"
-            cancelText="Não"
-          >
-            <Button size="small">Concluir</Button>
-          </Popconfirm>
-          <Popconfirm
-            title="Cancelar movimentação?"
-            onConfirm={() =>
-              void handleStatus(record.id, MovimentacaoStatus.CANCELADO)
-            }
-            okText="Sim"
-            cancelText="Não"
-          >
-            <Button size="small" danger>
-              Cancelar
-            </Button>
-          </Popconfirm>
-        </Space>
-      ),
+      render: (_: unknown, record: Movimentacao) => {
+        const canCancel =
+          record.status !== MovimentacaoStatus.CONCLUIDO &&
+          record.status !== MovimentacaoStatus.CANCELADO;
+
+        return (
+          <Space wrap>
+            <Popconfirm
+              title="Marcar como Em transito?"
+              onConfirm={() =>
+                void handleStatus(record.id, MovimentacaoStatus.EM_TRANSITO)
+              }
+              okText="Sim"
+              cancelText="Nao"
+            >
+              <Button size="small">Em transito</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Concluir movimentação?"
+              onConfirm={() =>
+                void handleStatus(record.id, MovimentacaoStatus.CONCLUIDO)
+              }
+              okText="Sim"
+              cancelText="Não"
+            >
+              <Button size="small">Concluir</Button>
+            </Popconfirm>
+            <Popconfirm
+              title="Cancelar movimentação?"
+              onConfirm={() =>
+                void handleStatus(record.id, MovimentacaoStatus.CANCELADO)
+              }
+              okText="Sim"
+              cancelText="Não"
+              disabled={!canCancel}
+            >
+              <Button size="small" danger disabled={!canCancel}>
+                Cancelar
+              </Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
     },
   ];
 
