@@ -96,7 +96,7 @@ export function MovimentacaoEntregaWizard({
   onColaboradorSelect,
 }: EntregaWizardProps) {
   const termoColumns = [
-    { title: "Versao", dataIndex: "versao", key: "versao" },
+    { title: "Versão", dataIndex: "versao", key: "versao" },
     { title: "Tipo", dataIndex: "tipo", key: "tipo" },
     { title: "Gerado por", dataIndex: "usuarioNome", key: "usuarioNome" },
     {
@@ -106,7 +106,7 @@ export function MovimentacaoEntregaWizard({
       render: (value: string) => formatIsoDateTime(value),
     },
     {
-      title: "Acoes",
+      title: "Ações",
       key: "acoes",
       render: (_: unknown, record: TermoInfo) => (
         <Space>
@@ -290,7 +290,7 @@ export function MovimentacaoEntregaWizard({
                           ]}
                         >
                           <Select
-                            placeholder="Variacao"
+                            placeholder="Variação"
                             options={variacaoOptionsFiltradas}
                             onPopupScroll={(event) => {
                               if (!onVariacoesScroll) return;
@@ -339,7 +339,7 @@ export function MovimentacaoEntregaWizard({
             <div className="mt-4">
               <Divider className="my-4">Estoque</Divider>
               <div className="text-xs text-neutral-500">
-                Estoque disponivel por variacao (total e reservado)
+                Estoque disponível por variação (total e reservado)
               </div>
               <div className="mt-2 max-h-64 overflow-y-auto pr-1">
                 {estoqueEntrega.length === 0 ? (
@@ -387,7 +387,7 @@ export function MovimentacaoEntregaWizard({
                     })}
                     columns={[
                       {
-                        title: "Variacao",
+                        title: "Variação",
                         dataIndex: "variacaoId",
                         key: "variacaoId",
                         render: (value: string) => {
@@ -410,7 +410,7 @@ export function MovimentacaoEntregaWizard({
                         key: "reservado",
                       },
                       {
-                        title: "Disponivel",
+                        title: "Disponível",
                         key: "disponivel",
                         render: (
                           _: unknown,
@@ -444,7 +444,7 @@ export function MovimentacaoEntregaWizard({
                 }}
                 disabled={!termos.length}
               >
-                Abrir ultimo termo
+                Abrir último termo
               </Button>
             </div>
             <Table

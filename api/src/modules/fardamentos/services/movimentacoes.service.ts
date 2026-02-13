@@ -384,7 +384,13 @@ export class MovimentacoesService {
       try {
         return await this.movRepository.manager.transaction(fn);
       } catch (err) {
-        const code = err?.code as string | undefined;
+        const code =
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          typeof (err as { code?: unknown }).code === 'string'
+            ? (err as { code: string }).code
+            : undefined;
         const isDeadlock =
           code === 'ER_LOCK_DEADLOCK' || code === 'ER_LOCK_WAIT_TIMEOUT';
 

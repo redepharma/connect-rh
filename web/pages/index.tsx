@@ -1,4 +1,4 @@
-import { Button, Result, Spin, Typography } from "antd";
+import { Button, Result, Spin } from "antd";
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "@/context/auth-context";

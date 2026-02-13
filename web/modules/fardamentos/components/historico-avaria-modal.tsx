@@ -79,7 +79,7 @@ export function HistoricoAvariaModal({
           {(fields, { add, remove }) => (
             <div className="space-y-4!">
               <div className="max-h-72 overflow-y-auto pr-1">
-                {fields.map((field, index) => {
+                {fields.map((field) => {
                   const itensAtuais = (form.getFieldValue("itens") ??
                     []) as Array<{
                     variacaoId?: string;

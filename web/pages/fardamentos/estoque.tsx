@@ -151,7 +151,7 @@ export default function EstoquePage() {
         const message =
           err instanceof Error
             ? err.message
-            : "Nao foi possivel carregar o estoque.";
+            : "Não foi possível carregar o estoque.";
         setError(message);
         toaster.erro("Erro ao carregar estoque", err);
       } finally {
@@ -210,7 +210,7 @@ export default function EstoquePage() {
     void loadFilterTipos();
   }, [loadFilterTipos]);
 
-  const loadMoreUnidades = async () => {
+  const loadMoreUnidades = useCallback(async () => {
     if (unidadesLoading || !unidadesHasMore) return;
     setUnidadesLoading(true);
     try {
@@ -228,9 +228,9 @@ export default function EstoquePage() {
     } finally {
       setUnidadesLoading(false);
     }
-  };
+  }, [debouncedUnidadesQuery, unidadesHasMore, unidadesLoading, unidadesOffset]);
 
-  const loadMoreTipos = async () => {
+  const loadMoreTipos = useCallback(async () => {
     if (tiposLoading || !tiposHasMore) return;
     setTiposLoading(true);
     try {
@@ -248,7 +248,7 @@ export default function EstoquePage() {
     } finally {
       setTiposLoading(false);
     }
-  };
+  }, [debouncedTiposQuery, tiposHasMore, tiposLoading, tiposOffset]);
 
   const loadVariacoes = useCallback(
     async (params?: {
@@ -359,21 +359,21 @@ export default function EstoquePage() {
     });
   }, [openAddModal, selectedUnidadeId, loadModalTipos]);
 
-  const loadMoreVariacoes = async () => {
+  const loadMoreVariacoes = useCallback(async () => {
     if (variacoesLoading || !variacoesHasMore) return;
     await loadVariacoes({
       offset: variacoesOffset,
       append: true,
     });
-  };
+  }, [loadVariacoes, variacoesHasMore, variacoesLoading, variacoesOffset]);
 
-  const loadMoreModalTipos = async () => {
+  const loadMoreModalTipos = useCallback(async () => {
     if (modalTiposLoading || !modalTiposHasMore) return;
     await loadModalTipos({
       offset: modalTiposOffset,
       append: true,
     });
-  };
+  }, [loadModalTipos, modalTiposHasMore, modalTiposLoading, modalTiposOffset]);
 
   const openAddEstoqueModal = () => {
     setSaveAndCreateAnother(false);

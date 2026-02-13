@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Button, Popconfirm, Space, Table, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import type { Unidade } from "../types/fardamentos.types";
@@ -35,7 +35,7 @@ export function UnitTable({
   >({});
   const [impactLoadingId, setImpactLoadingId] = useState<string | null>(null);
 
-  const loadImpactIfNeeded = async (unidadeId: string) => {
+  const loadImpactIfNeeded = useCallback(async (unidadeId: string) => {
     if (!onFetchDeleteImpact) return;
     if (impactByUnidadeId[unidadeId]) return;
 
@@ -46,7 +46,7 @@ export function UnitTable({
     } finally {
       setImpactLoadingId((current) => (current === unidadeId ? null : current));
     }
-  };
+  }, [impactByUnidadeId, onFetchDeleteImpact]);
 
   const getDeleteDescription = (record: Unidade) => {
     if (impactLoadingId === record.id) {
@@ -110,7 +110,7 @@ export function UnitTable({
               title="Remover unidade?"
               description={getDeleteDescription(record)}
               okText="Sim"
-              cancelText="Nao"
+              cancelText="Não"
               onConfirm={() => onDelete(record)}
               onOpenChange={(open) => {
                 if (open) {

@@ -46,11 +46,14 @@ function joinMessages(list: string[]): string {
 }
 
 function isApiClientError(x: unknown): x is ApiClientErrorShape {
+  if (typeof x !== "object" || x === null) return false;
+  const candidate = x as {
+    isApiClientError?: unknown;
+    status?: unknown;
+  };
   return (
-    typeof x === "object" &&
-    x !== null &&
-    (x as any).isApiClientError === true &&
-    typeof (x as any).status === "number"
+    candidate.isApiClientError === true &&
+    typeof candidate.status === "number"
   );
 }
 

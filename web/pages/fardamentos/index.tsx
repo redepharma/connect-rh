@@ -78,7 +78,7 @@ export default function FardamentosOverview() {
     <DefaultLayout>
       <FardamentosShell
         title="Visão geral"
-        description="Visao geral do catalogo e estoque do modulo de fardamentos."
+        description="Visão geral do catálogo e estoque do módulo de fardamentos."
       >
         <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <KpiCard

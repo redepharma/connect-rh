@@ -6,13 +6,13 @@ import { useRouter } from "next/router";
 import { Space, Typography } from "antd";
 
 const navItems = [
-  { href: "/fardamentos", label: "Visao geral" },
+  { href: "/fardamentos", label: "Visão geral" },
   { href: "/fardamentos/unidades", label: "Unidades" },
   { href: "/fardamentos/tipos", label: "Tipos" },
-  { href: "/fardamentos/variacoes", label: "Variacoes" },
+  { href: "/fardamentos/variacoes", label: "Variações" },
   { href: "/fardamentos/estoque", label: "Estoque" },
-  { href: "/fardamentos/movimentacoes", label: "Movimentacoes" },
-  { href: "/fardamentos/historico", label: "Historico" },
+  { href: "/fardamentos/movimentacoes", label: "Movimentações" },
+  { href: "/fardamentos/historico", label: "Histórico" },
   { href: "/fardamentos/avarias", label: "Avarias" },
   { href: "/fardamentos/saldos", label: "Saldos" },
 ];

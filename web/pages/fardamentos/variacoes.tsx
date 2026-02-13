@@ -126,7 +126,7 @@ export default function VariacoesPage() {
     void loadFilterTipos();
   }, [loadFilterTipos]);
 
-  const loadMoreTipos = async () => {
+  const loadMoreTipos = useCallback(async () => {
     if (tiposLoading || !tiposHasMore) return;
     setTiposLoading(true);
     try {
@@ -144,7 +144,7 @@ export default function VariacoesPage() {
     } finally {
       setTiposLoading(false);
     }
-  };
+  }, [debouncedTiposQuery, tiposHasMore, tiposLoading, tiposOffset]);
 
   const openCreate = () => {
     setEditing(null);

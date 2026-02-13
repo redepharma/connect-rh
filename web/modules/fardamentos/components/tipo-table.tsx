@@ -92,7 +92,7 @@ export function TipoTable({
             <Popconfirm
               title="Remover tipo?"
               okText="Sim"
-              cancelText="Nao"
+              cancelText="Não"
               onConfirm={() => onDelete(record)}
               disabled={disableActions}
             >

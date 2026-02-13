@@ -73,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       token,
       user: payload.user ?? null,
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({ error: "Falha ao trocar ticket SSO" });
   }
 }

@@ -200,7 +200,7 @@ export default function HistoricoMovimentacoesPage() {
     void loadFiltroUnidades();
   }, [loadFiltroUnidades]);
 
-  const loadMoreUnidades = async () => {
+  const loadMoreUnidades = useCallback(async () => {
     if (unidadesLoading || !unidadesHasMore) return;
     setUnidadesLoading(true);
     try {
@@ -218,7 +218,7 @@ export default function HistoricoMovimentacoesPage() {
     } finally {
       setUnidadesLoading(false);
     }
-  };
+  }, [debouncedUnidadesQuery, unidadesHasMore, unidadesLoading, unidadesOffset]);
 
   const openTermos = async (mov: Movimentacao) => {
     setMovSelecionada(mov);
@@ -475,6 +475,11 @@ export default function HistoricoMovimentacoesPage() {
       title: "Colaborador",
       dataIndex: "colaboradorNome",
       key: "colaboradorNome",
+      render: (value: string) => (
+        <span title={value}>
+          {value.length > 22 ? `${value.slice(0, 22).trimEnd()}...` : value}
+        </span>
+      ),
     },
     {
       title: "Tipo",
@@ -490,7 +495,7 @@ export default function HistoricoMovimentacoesPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (value: string) => (
+      render: (value: MovimentacaoStatus) => (
         <Tag
           color={
             value === MovimentacaoStatus.CONCLUIDO
@@ -500,7 +505,13 @@ export default function HistoricoMovimentacoesPage() {
                 : "gold"
           }
         >
-          {value === MovimentacaoStatus.EM_TRANSITO ? "EM TRANSITO" : value}
+          {value === MovimentacaoStatus.SEPARADO
+            ? "SEPARADO"
+            : value === MovimentacaoStatus.EM_TRANSITO
+              ? "EM TRÂNSITO"
+              : value === MovimentacaoStatus.CONCLUIDO
+                ? "CONCLUÍDO"
+                : "CANCELADO"}
         </Tag>
       ),
     },
@@ -508,6 +519,11 @@ export default function HistoricoMovimentacoesPage() {
       title: "Unidade",
       dataIndex: "unidadeNome",
       key: "unidadeNome",
+      render: (value: string) => (
+        <span title={value}>
+          {value.length > 18 ? `${value.slice(0, 18).trimEnd()}...` : value}
+        </span>
+      ),
     },
     {
       title: "Criado em",

@@ -288,7 +288,7 @@ export default function MovimentacoesPage() {
     void loadInitialVariacoes();
   }, [openEntrega, openDevolucao, variacoes.length, loadInitialVariacoes]);
 
-  const loadMoreVariacoes = async () => {
+  const loadMoreVariacoes = useCallback(async () => {
     if (variacoesLoading || !variacoesHasMore) return;
     setVariacoesLoading(true);
     try {
@@ -310,14 +310,14 @@ export default function MovimentacoesPage() {
     } finally {
       setVariacoesLoading(false);
     }
-  };
+  }, [variacoesHasMore, variacoesLoading, variacoesOffset]);
 
-  const loadEstoqueByUnidade = async (unidadeId: string) => {
+  const loadEstoqueByUnidade = useCallback(async (unidadeId: string) => {
     const result = await fetchEstoque({ unidadeId, offset: 0, limit: 100 });
     return mapEstoqueToUi(result.data);
-  };
+  }, []);
 
-  const loadMoreUnidades = async () => {
+  const loadMoreUnidades = useCallback(async () => {
     if (unidadesLoading || !unidadesHasMore) return;
     setUnidadesLoading(true);
     try {
@@ -335,7 +335,7 @@ export default function MovimentacoesPage() {
     } finally {
       setUnidadesLoading(false);
     }
-  };
+  }, [debouncedUnidadesQuery, unidadesHasMore, unidadesLoading, unidadesOffset]);
 
   useEffect(() => {
     const colaboradorId = devolucaoColaborador?.id;
@@ -825,7 +825,7 @@ export default function MovimentacoesPage() {
       title: "Status",
       dataIndex: "status",
       key: "status",
-      render: (value: string) => (
+      render: (value: MovimentacaoStatus) => (
         <Tag
           color={
             value === MovimentacaoStatus.CONCLUIDO
@@ -835,7 +835,13 @@ export default function MovimentacoesPage() {
                 : "gold"
           }
         >
-          {value === MovimentacaoStatus.EM_TRANSITO ? "EM TRANSITO" : value}
+          {value === MovimentacaoStatus.SEPARADO
+            ? "SEPARADO"
+            : value === MovimentacaoStatus.EM_TRANSITO
+              ? "EM TRÂNSITO"
+              : value === MovimentacaoStatus.CONCLUIDO
+                ? "CONCLUÍDO"
+                : "CANCELADO"}
         </Tag>
       ),
     },
@@ -861,14 +867,14 @@ export default function MovimentacoesPage() {
         return (
           <Space wrap>
             <Popconfirm
-              title="Marcar como Em transito?"
+              title="Marcar como Em trânsito?"
               onConfirm={() =>
                 void handleStatus(record.id, MovimentacaoStatus.EM_TRANSITO)
               }
               okText="Sim"
-              cancelText="Nao"
+              cancelText="Não"
             >
-              <Button size="small">Em transito</Button>
+              <Button size="small">Em trânsito</Button>
             </Popconfirm>
             <Popconfirm
               title="Concluir movimentação?"
@@ -972,7 +978,7 @@ export default function MovimentacoesPage() {
       >
         <SectionCard
           title="Resumo das movimentações"
-          description="Filtre por colaborador, unidade, status e periodo."
+          description="Filtre por colaborador, unidade, status e período."
           actions={
             showPageSkeleton ? (
               <Space wrap className="max-w-xl w-full">
@@ -1053,7 +1059,7 @@ export default function MovimentacoesPage() {
                     }}
                     options={[
                       { label: "Entrega", value: MovimentacaoTipo.ENTREGA },
-                      { label: "Devolucao", value: MovimentacaoTipo.DEVOLUCAO },
+                      { label: "Devolução", value: MovimentacaoTipo.DEVOLUCAO },
                     ]}
                     className="w-full md:min-w-40"
                   />
@@ -1071,11 +1077,11 @@ export default function MovimentacoesPage() {
                     options={[
                       { label: "Separado", value: MovimentacaoStatus.SEPARADO },
                       {
-                        label: "Em transito",
+                        label: "Em trânsito",
                         value: MovimentacaoStatus.EM_TRANSITO,
                       },
                       {
-                        label: "Concluido",
+                        label: "Concluído",
                         value: MovimentacaoStatus.CONCLUIDO,
                       },
                       {

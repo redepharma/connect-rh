@@ -239,11 +239,21 @@ export default function AvariasPage() {
         title: "Colaborador",
         dataIndex: "colaboradorNome",
         key: "colaboradorNome",
+        render: (value: string) => (
+          <span title={value}>
+            {value.length > 22 ? `${value.slice(0, 22).trimEnd()}...` : value}
+          </span>
+        ),
       },
       {
         title: "Unidade",
         dataIndex: "unidadeNome",
         key: "unidadeNome",
+        render: (value: string) => (
+          <span title={value}>
+            {value.length > 18 ? `${value.slice(0, 18).trimEnd()}...` : value}
+          </span>
+        ),
       },
       {
         title: "Tipo",
@@ -264,7 +274,14 @@ export default function AvariasPage() {
         title: "Descrição",
         dataIndex: "descricao",
         key: "descricao",
-        render: (value: string | null) => value ?? "-",
+        render: (value: string | null) => {
+          const text = value ?? "-";
+          return (
+            <span title={text}>
+              {text.length > 28 ? `${text.slice(0, 28).trimEnd()}...` : text}
+            </span>
+          );
+        },
       },
       {
         title: "Criado em",

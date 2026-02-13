@@ -99,7 +99,7 @@ export default function TiposPage() {
     void loadFilterUnidades();
   }, [loadFilterUnidades]);
 
-  const loadMoreUnidades = async () => {
+  const loadMoreUnidades = useCallback(async () => {
     if (unidadesLoading || !unidadesHasMore) return;
     setUnidadesLoading(true);
     try {
@@ -117,7 +117,7 @@ export default function TiposPage() {
     } finally {
       setUnidadesLoading(false);
     }
-  };
+  }, [debouncedUnidadesQuery, unidadesHasMore, unidadesLoading, unidadesOffset]);
 
   const handleUnidadesSearch = (value: string) => {
     setUnidadesQuery(value);

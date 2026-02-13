@@ -8,6 +8,12 @@ import { EstoqueEntity } from '../entities/estoque.entity';
 
 const LOW_STOCK_THRESHOLD = 3;
 
+type EstoqueMetricsRaw = {
+  total?: string | number | null;
+  reservado?: string | number | null;
+  lowStock?: string | number | null;
+};
+
 @Injectable()
 export class MetricasService {
   constructor(
@@ -37,7 +43,7 @@ export class MetricasService {
         'lowStock',
       )
       .setParameter('min', LOW_STOCK_THRESHOLD)
-      .getRawOne();
+      .getRawOne<EstoqueMetricsRaw>();
 
     return {
       unidades,

@@ -1,25 +1,13 @@
-import { usePathname } from "next/navigation";
 import { Divider, Menu, MenuProps } from "antd";
 import {
   AppstoreOutlined,
   CommentOutlined,
   SkinOutlined,
 } from "@ant-design/icons";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useAuth } from "@/context/auth-context";
-
-const items = [
-  { label: "Visão geral", href: "/fardamentos" },
-  { label: "Unidades", href: "/fardamentos/unidades" },
-  { label: "Tipos", href: "/fardamentos/tipos" },
-  { label: "Variações", href: "/fardamentos/variacoes" },
-  { label: "Estoque", href: "/fardamentos/estoque" },
-  { label: "Movimentações", href: "/fardamentos/movimentacoes" },
-  { label: "Historico", href: "/fardamentos/historico" },
-  { label: "Avarias", href: "/fardamentos/avarias" },
-  { label: "Saldos", href: "/fardamentos/saldos" },
-];
 
 export function Sidebar() {
   const { pathname } = useRouter();
@@ -146,7 +134,14 @@ export function Sidebar() {
   return (
     <aside className=" text-neutral-700 w-64 border-r border-stone-200 h-full shadow-sm p-4 flex flex-col justify-between">
       <div>
-        <img alt="Logo" className="w-44 mx-auto py-4" src="/logo.png" />
+        <Image
+          alt="Logo"
+          className="w-44 mx-auto py-4"
+          src="/logo.png"
+          width={176}
+          height={56}
+          priority
+        />
         <Divider className="my-4 " />
         <h2 className="text-center font-bold">{user?.nome}</h2>
         <p className="text-slate-600 text-center">{user?.departamento}</p>

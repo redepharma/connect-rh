@@ -8,9 +8,24 @@ import type { RequestUser } from '../../auth/types/auth.types';
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
-const vfs = pdfFonts?.pdfMake?.vfs ?? pdfFonts?.vfs;
+type PdfVfs = Record<string, string>;
+type PdfDocGenerator = {
+  getBuffer: (cb: (buffer: Uint8Array) => void) => void;
+};
+type PdfMakeLike = {
+  vfs?: PdfVfs;
+  createPdf: (docDefinition: unknown) => PdfDocGenerator;
+};
+type PdfFontsLike = {
+  pdfMake?: { vfs?: PdfVfs };
+  vfs?: PdfVfs;
+};
+
+const pdfMakeInstance = pdfMake as unknown as PdfMakeLike;
+const pdfFontsInstance = pdfFonts as unknown as PdfFontsLike;
+const vfs = pdfFontsInstance?.pdfMake?.vfs ?? pdfFontsInstance?.vfs;
 if (vfs) {
-  pdfMake.vfs = vfs;
+  pdfMakeInstance.vfs = vfs;
 }
 
 @Injectable()
@@ -121,16 +136,18 @@ export class TermosService {
     };
   }
 
-  private gerarPdfBase64(docDefinition: any): Promise<string> {
+  private gerarPdfBase64(docDefinition: unknown): Promise<string> {
     return new Promise((resolve, reject) => {
       try {
-        const pdfDocGenerator = pdfMake.createPdf(docDefinition);
+        const pdfDocGenerator = pdfMakeInstance.createPdf(docDefinition);
         pdfDocGenerator.getBuffer((buffer: Uint8Array) => {
           const base64 = Buffer.from(buffer).toString('base64');
           resolve(base64);
         });
       } catch (err) {
-        reject(err);
+        reject(
+          err instanceof Error ? err : new Error('Falha ao gerar PDF do termo'),
+        );
       }
     });
   }

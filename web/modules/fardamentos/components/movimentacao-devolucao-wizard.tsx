@@ -167,7 +167,7 @@ export function MovimentacaoDevolucaoWizard({
                 Confirmar devolução
               </Button>
               <Popconfirm
-                title="Forcar devolução?"
+                title="Forçar devolução?"
                 description="Ignora o saldo em posse do colaborador."
                 okText="Forçar"
                 cancelText="Cancelar"
@@ -271,7 +271,7 @@ export function MovimentacaoDevolucaoWizard({
                 className="w-full sm:min-w-[180px] sm:w-auto"
               />
               <Select
-                placeholder="Genero"
+                placeholder="Gênero"
                 allowClear
                 value={devolucaoGenero ?? undefined}
                 onChange={(value) => setDevolucaoGenero(value ?? null)}
@@ -408,7 +408,7 @@ export function MovimentacaoDevolucaoWizard({
         ) : (
           <>
             <Typography.Text className="text-sm text-neutral-600">
-              Registro criado. Gere um termo para esta devolucao.
+              Registro criado. Gere um termo para esta devolução.
             </Typography.Text>
             <div className="mt-4 space-x-4!">
               <Button
