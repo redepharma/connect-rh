@@ -121,7 +121,10 @@ export class UnidadesService {
   async update(id: string, dto: UpdateUnidadeDto): Promise<UnidadeEntity> {
     const unidade = await this.findOne(id);
 
-    if (dto.nome && dto.nome.trim().toLowerCase() !== unidade.nome.toLowerCase()) {
+    if (
+      dto.nome &&
+      dto.nome.trim().toLowerCase() !== unidade.nome.toLowerCase()
+    ) {
       await this.ensureUniqueName(dto.nome, id);
     }
 

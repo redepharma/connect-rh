@@ -23,7 +23,10 @@ export class TiposService {
     private readonly variacoesRepository: Repository<VariacaoEntity>,
   ) {}
 
-  private async ensureUniqueName(nome: string, excludeId?: string): Promise<void> {
+  private async ensureUniqueName(
+    nome: string,
+    excludeId?: string,
+  ): Promise<void> {
     const qb = this.tiposRepository
       .createQueryBuilder('tipo')
       .where('LOWER(tipo.nome) = LOWER(:nome)', { nome: nome.trim() });

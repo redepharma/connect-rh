@@ -45,7 +45,9 @@ export const resolvePapelConnectRh = (payload: JwtPayload): PapelConnectRH => {
 
 export const resolveDepartamento = (payload: JwtPayload): string | null => {
   const explicitDepartamento =
-    payload.departamento ?? payload.departamentoNome ?? payload.departamento_nome;
+    payload.departamento ??
+    payload.departamentoNome ??
+    payload.departamento_nome;
 
   if (explicitDepartamento) {
     const normalized = String(explicitDepartamento).trim();

@@ -50,7 +50,10 @@ export class AvariasService {
       .trim()
       .toUpperCase();
     const possuiEventoConcluido = (movimentacao.eventos ?? []).some(
-      (evento) => String(evento.status ?? '').trim().toUpperCase() === 'CONCLUIDO',
+      (evento) =>
+        String(evento.status ?? '')
+          .trim()
+          .toUpperCase() === 'CONCLUIDO',
     );
 
     if (

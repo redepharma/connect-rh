@@ -181,7 +181,10 @@ export class MovimentacoesService {
       (acc, item) => acc + (item.quantidade ?? 0),
       0,
     );
-    const offset = Math.max(0, Number.isFinite(query?.offset) ? query!.offset! : 0);
+    const offset = Math.max(
+      0,
+      Number.isFinite(query?.offset) ? query!.offset! : 0,
+    );
     const limit = Math.min(
       10,
       Math.max(1, Number.isFinite(query?.limit) ? query!.limit! : 10),
